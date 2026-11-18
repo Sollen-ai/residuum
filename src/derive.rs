@@ -392,7 +392,7 @@ fn close_with_programs(
         .into_iter()
         .filter(|event| known_keys.insert(event.clone()))
         .collect();
-    let mut known_index = KnownIndex::new(&known);
+    let mut known_index = KnownIndex::with_arguments(&known);
     let mut frontier = known.clone();
     let mut derivations = Vec::new();
     let mut seen_unstamped = BTreeSet::new();
@@ -548,7 +548,7 @@ fn match_antecedents_in(
             substitutions,
         }],
         Antecedent::Event(pattern) => known
-            .candidates(pattern)
+            .candidates_bound(pattern, parameters, &substitutions)
             .filter_map(|event| {
                 let mut substitutions = substitutions.clone();
                 match_event(pattern, event, parameters, &mut substitutions)?;

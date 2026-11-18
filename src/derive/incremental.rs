@@ -64,7 +64,7 @@ impl IncrementalClosure {
     fn new_with_clock(seeds: Vec<Event>, rules: &[Rule], clock: &mut dyn DerivationClock) -> Self {
         let closure = super::close_with_programs(seeds, rules, &[], clock);
         let known_keys = closure.known.iter().cloned().collect();
-        let index = KnownIndex::new(&closure.known);
+        let index = KnownIndex::with_arguments(&closure.known);
         let seen = closure
             .derivations
             .iter()
@@ -258,7 +258,7 @@ pub(super) fn match_delta_antecedents(
                 }
                 let mut joined = Vec::new();
                 for (bindings, witnesses) in matches {
-                    for candidate in known.candidates(atom) {
+                    for candidate in known.candidates_bound(atom, parameters, &bindings) {
                         if position < pivot && fresh.is_some_and(|f| f.contains(&candidate)) {
                             continue;
                         }

@@ -187,7 +187,10 @@ fn indexed_known_matches_linear_product_with_identical_provenance() {
         (closure, session.finish())
     };
     let session = profile::Session::new("partialProduct indexed");
-    let indexed = close_program_reference(seeds, &module, &mut Clock::default()).unwrap();
+    let indexed = {
+        let _header = profile::header_only_index();
+        close_program_reference(seeds, &module, &mut Clock::default()).unwrap()
+    };
     let stats = session.finish();
     assert_eq!(format!("{original:?}"), format!("{indexed:?}"));
     assert_eq!(linear.probes, 2_117_296);
@@ -213,6 +216,97 @@ fn indexed_known_matches_linear_product_with_identical_provenance() {
             linear.comparisons
         )
     );
+}
+
+#[test]
+fn argument_index_matches_linear_product_with_identical_provenance() {
+    // Item 1 of docs/semi-naive-pending-optimizations.md: the same closure, in
+    // the same order with the same stamps, and fewer events probed than with
+    // the header-only index, because bound arguments narrow the candidates.
+    let (module, seeds) = product("partialProduct");
+    let (original, linear) = {
+        let _scan = profile::linear_scan();
+        let session = profile::Session::new("partialProduct linear");
+        let closure =
+            close_program_reference(seeds.clone(), &module, &mut Clock::default()).unwrap();
+        (closure, session.finish())
+    };
+    let header = {
+        let _header = profile::header_only_index();
+        let session = profile::Session::new("partialProduct header");
+        close_program_reference(seeds.clone(), &module, &mut Clock::default()).unwrap();
+        session.finish()
+    };
+    let session = profile::Session::new("partialProduct arguments");
+    let indexed = close_program_reference(seeds, &module, &mut Clock::default()).unwrap();
+    let stats = session.finish();
+    assert_eq!(format!("{original:?}"), format!("{indexed:?}"));
+    assert_eq!(stats.header_rejects, 0);
+    assert!(
+        stats.probes < header.probes,
+        "{} / {}",
+        stats.probes,
+        header.probes
+    );
+    assert!(stats.structural_rejects <= header.structural_rejects);
+    // Every probe the argument index skips was a structural reject before.
+    assert_eq!(
+        header.probes - stats.probes,
+        header.structural_rejects - stats.structural_rejects
+    );
+    assert_eq!(
+        (
+            stats.rounds,
+            stats.evaluations,
+            stats.activated,
+            stats.candidates,
+            stats.duplicates,
+            stats.comparisons
+        ),
+        (
+            linear.rounds,
+            linear.evaluations,
+            linear.activated,
+            linear.candidates,
+            linear.duplicates,
+            linear.comparisons
+        )
+    );
+    eprintln!(
+        "probes: linear {} header {} arguments {}; structural rejects: header {} arguments {}",
+        linear.probes,
+        header.probes,
+        stats.probes,
+        header.structural_rejects,
+        stats.structural_rejects
+    );
+}
+
+#[test]
+fn argument_index_keeps_incremental_updates_equal_to_linear_scan() {
+    // The incremental join reads Known through the argument index; compare a
+    // base plus delta against the same update with the linear scan.
+    let (module, seeds) = product("partialProduct");
+    let rules = module
+        .declarations
+        .iter()
+        .filter_map(|d| match d {
+            Declaration::Rule(r) => Some(r.clone()),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    let split = seeds.len() / 2;
+    let run = || {
+        let mut state =
+            IncrementalClosure::new(seeds[..split].to_vec(), &rules, &mut Clock::default());
+        let delta = state.update(seeds[split..].to_vec(), &mut Clock::default());
+        (format!("{:?}", state.closure()), format!("{delta:?}"))
+    };
+    let linear = {
+        let _scan = profile::linear_scan();
+        run()
+    };
+    assert_eq!(linear, run());
 }
 
 #[test]

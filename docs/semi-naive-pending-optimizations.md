@@ -16,7 +16,7 @@ de rondas y `PropositionTime` ([discrete-derivative.md](discrete-derivative.md) 
 
 | # | Optimización | Impacto estimado | Riesgo | Toca |
 |---:|---|---|---|---|
-| 1 | Índice por argumentos ya ligados | Alto | Medio | `known_index.rs`, matching |
+| 1 | Índice por argumentos ya ligados | Alto | Medio | `known_index.rs`, matching — **aplicada** |
 | 2 | Mapa verbo → reglas relevantes | Medio | Bajo | `incremental.rs`, `program_incremental.rs` |
 | 3 | Orden de uniones por selectividad | Medio | Medio | `match_delta_antecedents` |
 | 4 | Evaluación por componentes de dependencia | Medio | Medio | schedulers de cierre |
@@ -52,6 +52,27 @@ temporales) siguen por el camino actual.
 **Verificar.** Comparar indexado contra `profile::linear_scan()` como en
 `indexed_known_matches_linear_product_with_identical_provenance`: misma
 igualdad `Debug` de cierres y mismos conteos salvo `probes` y `header_rejects`.
+
+**Aplicado (2026-11-18).** `KnownIndex::with_arguments` añade a cada cubeta
+de encabezado un mapa por posición de argumento, de término ground exacto a
+posiciones ascendentes en Known; se construye de forma ansiosa, no perezosa.
+Lo usan los Known de nivel de cierre (`close`, `IncrementalClosure`,
+`IncrementalProgramClosure`, `ForwardSession`); las fronteras siguen con el
+índice de encabezado. `KnownView::candidates_bound` elige, entre las
+posiciones fijadas, la de menos posiciones: una constante o `None`, o un
+parámetro de tipo no temporal ya ligado a un término ground. Para esos casos
+`bind_term` sólo acepta igualdad exacta, así que el filtro no pierde ningún
+candidato y conserva el orden de Known. Los parámetros de tipo
+`PropositionTime`, los constructores y los records siguen el camino de
+encabezado, porque su comparación canónica no es igualdad sintáctica.
+
+Verificación: `argument_index_matches_linear_product_with_identical_provenance`
+(`Debug` idéntico al barrido lineal en `partialProduct`, mismos contadores
+salvo sondeos, y cada sondeo ahorrado era un rechazo estructural) y
+`argument_index_keeps_incremental_updates_equal_to_linear_scan`. El test
+anterior del índice de encabezado se conserva con `profile::header_only_index`.
+Observado una vez, build de tests sin optimizar: sondeos 93 306 → 22 293,
+rechazos estructurales 81 277 → 10 264, `matching_ms` 632 → 248.
 
 ## 2. Mapa verbo → reglas relevantes
 

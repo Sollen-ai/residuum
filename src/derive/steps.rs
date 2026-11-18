@@ -60,7 +60,7 @@ impl ForwardSession {
     }
 
     pub fn step(&mut self, clock: &mut dyn DerivationClock) -> ForwardStep {
-        let index = KnownIndex::new(&self.closure.known);
+        let index = KnownIndex::with_arguments(&self.closure.known);
         let view = KnownView {
             events: &self.closure.known,
             index: Some(&index),

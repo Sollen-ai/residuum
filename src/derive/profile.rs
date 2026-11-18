@@ -200,6 +200,22 @@ impl Drop for LinearScan {
         SCAN_KNOWN.with(|mode| mode.set(self.0));
     }
 }
+// Test-only: keep the header-only lookup, to compare it with the argument index.
+thread_local! {
+    static HEADER_ONLY: Cell<bool> = const { Cell::new(false) };
+}
+pub(super) fn header_only() -> bool {
+    HEADER_ONLY.with(Cell::get)
+}
+pub(super) struct HeaderOnly(bool);
+pub(super) fn header_only_index() -> HeaderOnly {
+    HeaderOnly(HEADER_ONLY.with(|mode| mode.replace(true)))
+}
+impl Drop for HeaderOnly {
+    fn drop(&mut self) {
+        HEADER_ONLY.with(|mode| mode.set(self.0));
+    }
+}
 pub(super) fn structural_reject() {
     if ENABLED.with(Cell::get) {
         STRUCTURAL_REJECTS.with(|c| c.set(c.get() + 1));
