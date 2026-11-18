@@ -1,6 +1,6 @@
 //! Add-only module closure with dynamic Verb.program activation.
 //! Events drive subsequent matches; proofs are retained but are not event deltas.
-use super::incremental::match_delta_antecedents;
+use super::incremental::{match_delta_antecedents, relevant_rules};
 use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,7 +39,17 @@ pub struct IncrementalProgramClosure {
     closure: Closure,
     known_keys: BTreeSet<Event>,
     index: KnownIndex,
+    /// Antecedent headers of the ordinary rules and of each program's rules.
+    ordinary_headers: RuleHeaders,
+    program_headers: Vec<RuleHeaders>,
     seen: BTreeSet<UnstampedDerivation>,
+}
+
+fn program_headers(programs: &[ProgramSource]) -> Vec<RuleHeaders> {
+    programs
+        .iter()
+        .map(|program| RuleHeaders::new(&program.rules))
+        .collect()
 }
 
 impl IncrementalProgramClosure {
@@ -50,6 +60,8 @@ impl IncrementalProgramClosure {
     ) -> Result<Self, crate::elab::Error> {
         let (ordinary, programs) = prepare_programs(module)?;
         let mut state = Self {
+            ordinary_headers: RuleHeaders::new(&ordinary),
+            program_headers: program_headers(&programs),
             ordinary,
             programs,
             active: Vec::new(),
@@ -205,7 +217,12 @@ impl IncrementalProgramClosure {
                 delta_view
             };
             let mut next = Vec::new();
+            // Full initializations scan Known, so only delta evaluation is filtered.
+            let ordinary_relevant = relevant_rules(&self.ordinary_headers, &frontier);
             for index in 0..self.ordinary.len() {
+                if !initial && !ordinary_relevant[index] {
+                    continue;
+                }
                 let rule = &self.ordinary[index];
                 delta.stats.rules_examined += 1;
                 #[cfg(test)]
@@ -227,14 +244,21 @@ impl IncrementalProgramClosure {
                 profile::rule(&rule.name, false, timer, candidates.len());
                 self.retain(candidates, delta, &mut next, clock);
             }
+            let program_relevant: Vec<Vec<bool>> = self
+                .program_headers
+                .iter()
+                .map(|headers| relevant_rules(headers, &frontier))
+                .collect();
             for index in 0..self.active.len() {
                 let initialization = !self.active[index].initialized;
                 let source = self.active[index].source;
                 for member in 0..self.programs[source].rules.len() {
                     let activation = &self.active[index];
                     let rule = &self.programs[source].rules[member];
-                    // Old activations have no work when only proofs changed.
-                    if !initialization && frontier.is_empty() {
+                    // Old activations have no work when only proofs changed, nor
+                    // when no frontier event can pivot into this member rule.
+                    if !initialization && (frontier.is_empty() || !program_relevant[source][member])
+                    {
                         continue;
                     }
                     delta.stats.rules_examined += 1;
@@ -348,6 +372,8 @@ mod tests {
         assert_eq!(stored.derivations.len() + 1, expected.derivations.len());
         let (ordinary, programs) = prepare_programs(&m).unwrap();
         let mut state = IncrementalProgramClosure {
+            ordinary_headers: RuleHeaders::new(&ordinary),
+            program_headers: program_headers(&programs),
             ordinary,
             programs,
             active: vec![],

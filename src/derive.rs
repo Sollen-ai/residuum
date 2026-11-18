@@ -6,7 +6,9 @@ mod steps;
 pub use steps::{DerivativeSession, DerivativeStep, ForwardSession, ForwardStep};
 mod known_index;
 mod program_incremental;
+mod relevance;
 use known_index::{KnownIndex, KnownView};
+use relevance::RuleHeaders;
 #[cfg(test)]
 mod profile;
 #[cfg(test)]

@@ -215,6 +215,126 @@ fn indexed_known_matches_linear_product_with_identical_provenance() {
     );
 }
 
+/// Logical and provenance results of an update; `rules_examined` is the only
+/// counter the relevance filter is allowed to change.
+fn update_result(delta: &ClosureDelta) -> String {
+    format!(
+        "{:?} {:?} rounds={} pivots={} full={}",
+        delta.known,
+        delta.derivations,
+        delta.stats.rounds,
+        delta.stats.delta_pivot_matches,
+        delta.stats.full_matches
+    )
+}
+
+#[test]
+fn relevant_rules_keep_every_incremental_delta_and_its_order() {
+    // Item 2 of docs/semi-naive-pending-optimizations.md: per scenario of the
+    // product fixture, a base of the first half of the seeds and one-seed
+    // updates; same deltas, in the same order, with and without the filter.
+    let module = load("peano_polynomial_product_scenario.res");
+    let rules = module
+        .declarations
+        .iter()
+        .filter_map(|d| match d {
+            Declaration::Rule(r) => Some(r.clone()),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    let (mut filtered_rules, mut all_rules) = (0, 0);
+    for name in [
+        "unitProduct",
+        "gapsProduct",
+        "partialProduct",
+        "computedProductThenSum",
+    ] {
+        let seeds = input(&module, name);
+        let split = seeds.len() / 2;
+        let run = || {
+            let mut clock = Clock::default();
+            let mut state = IncrementalClosure::new(seeds[..split].to_vec(), &rules, &mut clock);
+            let deltas = seeds[split..]
+                .iter()
+                .map(|seed| state.update(vec![seed.clone()], &mut clock))
+                .collect::<Vec<_>>();
+            (format!("{:?}", state.closure()), deltas)
+        };
+        let (expected, unfiltered) = {
+            let _all = profile::every_rule();
+            run()
+        };
+        let (actual, filtered) = run();
+        assert_eq!(expected, actual, "{name}");
+        for (a, b) in unfiltered.iter().zip(&filtered) {
+            assert_eq!(update_result(a), update_result(b), "{name}");
+            assert!(b.stats.rules_examined <= a.stats.rules_examined);
+            all_rules += a.stats.rules_examined;
+            filtered_rules += b.stats.rules_examined;
+        }
+    }
+    assert!(filtered_rules < all_rules, "{filtered_rules} / {all_rules}");
+    eprintln!("rules examined: {all_rules} without the filter, {filtered_rules} with it");
+}
+
+#[test]
+fn relevant_rules_keep_program_closure_deltas_and_activations() {
+    // Same comparison for the module closure with Verb.program activations,
+    // where both ordinary rules and activated program rules are filtered.
+    let module = load("peano_polynomial_product_scenario.res");
+    let (mut filtered_rules, mut all_rules) = (0, 0);
+    for name in ["unitProduct", "gapsProduct", "partialProduct"] {
+        let seeds = input(&module, name);
+        let split = seeds.len() / 2;
+        let run = || {
+            let mut clock = Clock::default();
+            let mut state =
+                IncrementalProgramClosure::new(seeds[..split].to_vec(), &module, &mut clock)
+                    .unwrap();
+            let deltas = seeds[split..]
+                .iter()
+                .map(|seed| state.update(vec![seed.clone()], &mut clock))
+                .collect::<Vec<_>>();
+            (format!("{:?}", state.closure()), deltas)
+        };
+        let (expected, unfiltered) = {
+            let _all = profile::every_rule();
+            run()
+        };
+        let (actual, filtered) = run();
+        assert_eq!(expected, actual, "{name}");
+        for (a, b) in unfiltered.iter().zip(&filtered) {
+            assert_eq!(
+                format!(
+                    "{:?} {:?} {:?} {}",
+                    a.known, a.derivations, a.activations, a.full_initializations
+                ),
+                format!(
+                    "{:?} {:?} {:?} {}",
+                    b.known, b.derivations, b.activations, b.full_initializations
+                ),
+                "{name}"
+            );
+            assert_eq!(
+                (
+                    a.stats.rounds,
+                    a.stats.delta_pivot_matches,
+                    a.stats.full_matches
+                ),
+                (
+                    b.stats.rounds,
+                    b.stats.delta_pivot_matches,
+                    b.stats.full_matches
+                )
+            );
+            all_rules += a.stats.rules_examined;
+            filtered_rules += b.stats.rules_examined;
+        }
+    }
+    assert!(filtered_rules < all_rules, "{filtered_rules} / {all_rules}");
+    eprintln!("program rules examined: {all_rules} without the filter, {filtered_rules} with it");
+}
+
 #[test]
 fn indexed_known_preserves_negative_cycles_unit_and_new_justifications() {
     let module = load("discrete_derivative.res");
