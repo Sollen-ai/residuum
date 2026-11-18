@@ -74,6 +74,19 @@ No se publican resultados truncados. Esto no introduce un nuevo enum.
 
 ## Adopción pendiente en los consumidores
 
+> **Aplicada en parte (7ea1b7a, 2026-10-13).** `run_experiments` delega en
+> `run_configured_query` cuando el experimento no es legacy
+> (`ExperimentQueryOptions::is_legacy`). Con `query active residual ...` en la
+> fuente se llama a `query_active_program_residual_with_bindings` o a su
+> variante con alcance, y el resultado queda en
+> `ExperimentResult.active_residual`; el modo por pasos usa
+> `begin_active_residual_query*` (`cli/steps.rs`). Sigue pendiente: los
+> experimentos legacy de módulos con Program se rechazan
+> (`src/experiments.rs`, "residual/FOUR experiment integration is not
+> implemented"), y FOUR no acepta modo activo. Detalle de la sintaxis en
+> [residual-query-source-bindings.md](residual-query-source-bindings.md).
+> La lista siguiente describe el estado en la fecha de esta revisión.
+
 Los exports en src/lib.rs y src/residual.rs ya hacen disponible la API activa.
 Las rutas históricas no cambiaron:
 
