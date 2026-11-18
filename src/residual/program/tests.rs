@@ -1,6 +1,7 @@
 use super::*;
 use crate::typed::{
-    DerivationTime, PropositionType, RuleBody, StateTime, StateTransitionType, Term, TimeExpr,
+    Declaration, DerivationTime, PropositionType, RuleBody, StateTime, StateTransitionType, Term,
+    TimeExpr,
 };
 use crate::{DerivationClock, close, parse_formal_to_typed};
 

@@ -547,39 +547,39 @@ pub fn render_requirement(requirement: &RequirementFormula) -> String {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, family_experiments))]
 mod step_tests;
-#[cfg(test)]
+#[cfg(all(test, family_experiments))]
 mod tests;
 
-#[cfg(test)]
+#[cfg(all(test, family_experiments))]
 mod owns_tests;
 
-#[cfg(test)]
+#[cfg(all(test, family_experiments))]
 mod reuse_tests;
 
-#[cfg(test)]
+#[cfg(all(test, family_experiments))]
 mod interface_tests;
 
-#[cfg(test)]
+#[cfg(all(test, family_experiments))]
 mod refinement_tests;
 
-#[cfg(test)]
+#[cfg(all(test, family_experiments))]
 mod sells_tests;
 
-#[cfg(test)]
+#[cfg(all(test, family_experiments))]
 mod associated_program_tests;
 
-#[cfg(test)]
+#[cfg(all(test, family_experiments))]
 mod active_program_tests;
 
-#[cfg(test)]
+#[cfg(all(test, family_experiments))]
 mod composition_structure_tests;
 
-#[cfg(test)]
+#[cfg(all(test, family_experiments))]
 mod discrete_derivative_tests;
 
-#[cfg(test)]
+#[cfg(all(test, family_experiments))]
 mod legal_case_tests;
-#[cfg(test)]
+#[cfg(all(test, family_experiments))]
 mod query_binding_tests;

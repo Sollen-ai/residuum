@@ -663,9 +663,9 @@ fn check_term(
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, family_residual))]
 mod compatibility_tests;
-#[cfg(test)]
+#[cfg(all(test, family_residual))]
 mod session_tests;
-#[cfg(test)]
+#[cfg(all(test, family_residual))]
 mod tests;

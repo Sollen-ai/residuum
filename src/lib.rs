@@ -44,7 +44,7 @@ pub use typed::{Module, ResidualRequirement};
 #[cfg(test)]
 mod event_identity_tests;
 
-#[cfg(test)]
+#[cfg(all(test, family_experiments))]
 mod legal_abduction_tests;
 
 #[cfg(test)]

@@ -1,4 +1,7 @@
 //! Bounded observations over unchanged source ontologies, not new engine semantics.
+// Helpers serve the base tests, which only the geometry family compiles; builds
+// that include it, and the full build, still report dead code.
+#![cfg_attr(not(family_legal_geometry), allow(dead_code, unused_imports))]
 use residuum::derive::{DerivationClock, instantiate_from_known};
 use residuum::experiments::render_event;
 use residuum::typed::*;
@@ -6,42 +9,55 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
+#[cfg(family_legal_geometry)]
 #[path = "legal_geometry_extreme_tests.rs"]
 mod extremes;
 
+#[cfg(family_legal_geometry)]
 #[path = "legal_geometry_frontier_tests.rs"]
 mod frontiers;
 
+#[cfg(family_legal_geometry)]
 #[path = "legal_geometry_residual_tests.rs"]
 mod residual_comparison;
 
+#[cfg(family_legal_geometry)]
 #[path = "legal_geometry_explicit_query_tests.rs"]
 mod explicit_queries;
 
+#[cfg(family_legal_geometry)]
 #[path = "legal_geometry_query_scope_tests.rs"]
 mod query_dependencies;
 
+#[cfg(family_legal_geometry)]
 #[path = "legal_geometry_residual_activation_tests.rs"]
 mod residual_activation;
 
+#[cfg(family_legal_geometry)]
 #[path = "legal_geometry_active_frontier_tests.rs"]
 mod active_frontiers;
 
+#[cfg(family_legal_geometry)]
 #[path = "legal_geometry_partition_tests.rs"]
 mod partitions;
 
+#[cfg(family_legal_learning)]
 #[path = "legal_geometry_recalcitrance_tests.rs"]
 mod recalcitrance;
 
+#[cfg(family_legal_learning)]
 #[path = "legal_geometry_conversation_tests.rs"]
 mod conversation;
 
+#[cfg(family_legal_learning)]
 #[path = "legal_geometry_typed_explanation_tests.rs"]
 mod typed_explanations;
 
+#[cfg(family_legal_learning)]
 #[path = "legal_geometry_riggs_tests.rs"]
 mod riggs;
 
+#[cfg(family_legal_learning)]
 #[path = "legal_geometry_structural_generation_tests.rs"]
 mod structural_generation;
 
@@ -325,6 +341,7 @@ fn audit_proofs(m: &Module, c: &Closure) {
         assert!(m.origin(&d.record.rule).is_some());
     }
 }
+#[cfg(family_legal_geometry)]
 #[test]
 fn correspondence_and_typed_inventory() {
     let g = module("general");
@@ -505,15 +522,18 @@ fn study_window(name: &str) {
         stored.len()
     );
 }
+#[cfg(family_legal_geometry)]
 #[test]
 fn performance_regions_and_closures() {
     study_window("performance");
 }
+#[cfg(family_legal_geometry)]
 #[test]
 fn authority_regions_and_closures() {
     study_window("authority");
 }
 
+#[cfg(family_legal_geometry)]
 #[test]
 fn legislation_transfer_and_evidential_boundaries() {
     study_window("legislation");
@@ -561,6 +581,7 @@ fn legislation_transfer_and_evidential_boundaries() {
     );
 }
 
+#[cfg(family_legal_geometry)]
 #[test]
 fn common_universe_quotients_and_lattice_counterexamples() {
     let g = module("general");
@@ -795,6 +816,7 @@ fn finite_frontiers(m: &Module, e: &[Event], allowed: &BTreeSet<usize>) -> (usiz
     }
     (ground.len(), supports)
 }
+#[cfg(family_legal_geometry)]
 #[test]
 fn full_event_frontiers_without_powerset_enumeration() {
     let g = module("general");
@@ -844,6 +866,7 @@ fn full_event_frontiers_without_powerset_enumeration() {
     save("full-event-frontier-totals.tsv", &totals);
 }
 
+#[cfg(family_legal_geometry)]
 #[test]
 fn anti_exchange_on_controlled_theory_states() {
     let g = module("general");
@@ -941,5 +964,6 @@ fn anti_exchange_on_controlled_theory_states() {
     save("predicate-order.tsv", &order_report);
 }
 
+#[cfg(family_legal_geometry)]
 #[path = "legal_geometry_region_revision_tests.rs"]
 mod region_revision;

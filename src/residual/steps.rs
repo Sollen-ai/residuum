@@ -382,5 +382,5 @@ impl ActiveResidualSession {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, family_residual))]
 mod tests;

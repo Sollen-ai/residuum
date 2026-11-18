@@ -15,6 +15,7 @@ import time
 
 
 ROOT = Path(__file__).resolve().parent.parent
+TEST_FAMILIES = {'test-core', 'test-residual', 'test-experiments', 'test-legal-geometry', 'test-legal-learning'}
 MIB = 1024 * 1024
 MEMORY_LIMIT = 1024 * MIB
 STOP_MEMORY = 768 * MIB
@@ -161,6 +162,9 @@ def main():
     parser.add_argument('--test', action='append', default=[], help='Exact active test name; repeatable')
     parser.add_argument('--test-target', choices=('lib', 'cli'), default='lib',
                         help='Compile only the selected test target (default: lib)')
+    parser.add_argument('--features', default='',
+                        help='Comma-separated test families (test-core, test-residual, test-experiments, test-legal-geometry, test-legal-learning); '
+                             'default compiles every test')
     parser.add_argument('--binary', type=Path, help='Use an existing binary without compiling')
     parser.add_argument('--compile-only', action='store_true')
     parser.add_argument('--fmt-check', action='store_true')
@@ -177,6 +181,12 @@ def main():
         parser.error('--steps and --trace require --cli')
     if args.steps is not None and not 1 <= args.steps <= 4096:
         parser.error('--steps must be in 1..4096')
+    families = [f for f in args.features.split(',') if f]
+    unknown = sorted(set(families) - TEST_FAMILIES)
+    if unknown:
+        parser.error(f'unknown test families: {", ".join(unknown)}')
+    if families and (args.fixture or args.binary or args.fmt_check or args.format):
+        parser.error('--features only selects test families for compilation')
     if args.test_target != 'lib' and (args.fixture or args.fmt_check or args.format):
         parser.error('--test-target is only for test compilation/execution')
     if args.cli and (not args.fixture or args.forward or args.incremental or args.library):
@@ -247,7 +257,8 @@ def main():
         target_args = ['--lib'] if args.test_target == 'lib' else ['--bin', 'residuum']
         target_kind = 'lib' if args.test_target == 'lib' else 'bin'
         output = run_bounded(report, rows, 'compile', 'compile only',
-                             ['cargo', 'test', '--offline', '--locked', '--no-run'] + target_args + [
+                             ['cargo', 'test', '--offline', '--locked', '--no-run'] + target_args +
+                             (['--features', ','.join(families)] if families else []) + [
                               '--jobs', '1', '--message-format=json'], 45)
         binaries = []
         for line in output.read_text().splitlines():

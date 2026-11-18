@@ -87,7 +87,7 @@ eso es una cota superior.
 | # | Palanca | Efecto esperado | Riesgo | Estado |
 |---:|---|---|---|---|
 | 1 | `[profile.test] debug = 0` en `Cargo.toml` | ≥ 772 → 675 en lib; deja de depender del entorno | Ninguno | **Aplicada** |
-| 2 | Agrupar módulos de test por familias tras features de Cargo | Cada compilación se acerca a biblioteca + una familia, ≈ 400 a 500 | Bajo; `test_safe.py` debe aceptar `--features` y seguir exigiendo un binario | Pendiente |
+| 2 | Agrupar módulos de test por familias tras features de Cargo | Cada compilación se acerca a biblioteca + una familia, ≈ 400 a 500 | Bajo; `test_safe.py` debe aceptar `--features` y seguir exigiendo un binario | **Aplicada** (véase abajo) |
 | 3 | Fixtures ejecutadas por la CLI con salida esperada, en vez de tests Rust que sólo cargan un `.res` | Los 133 tests que cargan fixtures salen del crate de la CLI | Medio: requiere salida JSON estable y resolver `derivedAt` | Pendiente |
 | 4 | Mover la lógica de la CLI a la biblioteca y los tests a `tests/` como crates de integración | Igual que 2 con compilación separada por archivo | Medio: refactor de 1 347 líneas | Alternativa a 2 |
 | 5 | Separar los experimentos jurídicos en un crate del workspace | Reduce también el crate de biblioteca | Alto esfuerzo | Pendiente |
@@ -119,7 +119,7 @@ Python como `scripts/four_least_model_check.py`.
   preciso que sus columnas anónima y caché.
 - No se midió `debug = "line-tables-only"`, punto medio si hacen falta trazas.
 - Las cifras dependen de rustc 1.87.0 y del estado actual del código; crecerán con
-  cada test que se añada mientras no se aplique la palanca 2 o la 3.
+  cada test que se añada; la palanca 2 permite compilar sólo una familia.
 
 ## Cambio aplicado
 
@@ -127,3 +127,50 @@ Python como `scripts/four_least_model_check.py`.
 dos targets de tests sin variables de entorno, 675 y 651 MiB, y un test de la
 biblioteca ejecutado individualmente con el binario nuevo. El perfil `dev`, con
 el que se compila el binario `residuum`, no cambia.
+
+## Palanca 2 aplicada: familias de tests
+
+`Cargo.toml` declara las features `test-core`, `test-residual`,
+`test-experiments`, `test-legal-geometry` y `test-legal-learning`; cada una
+activa el marcador `test-families`. `build.rs`, sin dependencias, emite un cfg
+`family_*` por familia seleccionada, o todos si no se selecciona ninguna. Así
+`cargo test` sin features compila exactamente los mismos tests que antes.
+
+| Familia | Target | Módulos |
+|---|---|---|
+| núcleo (siempre) | lib | `lib.rs` en línea, `derive`, `algebra`, `formal`, identidad de eventos, términos temporales, regresión monótona |
+| `test-residual` | lib | todo `src/residual/**` |
+| `test-experiments` | lib | todo `src/experiments/**` y `legal_abduction_tests` |
+| núcleo (siempre) | cli | todos los módulos de `cli/tests.rs` salvo los jurídicos, y `cli/steps` |
+| `test-legal-geometry` | cli | `legal_geometry` base (sus siete tests), extremos, fronteras, residual, consultas, activación, particiones, revisión de regiones; `legal_partition` |
+| `test-legal-learning` | cli | recalcitrancia, conversación, explicaciones tipadas, Riggs, generación estructural (más los helpers de la base, sin sus tests) |
+
+El runner acepta `--features=a,b`, rechaza nombres desconocidos, la pasa a
+`cargo test --no-run` y sigue exigiendo un único binario. Ejemplo:
+
+```
+python3 scripts/test_safe.py --test-target cli --features=test-legal-learning --test <nombre>
+```
+
+Medición del 2026-11-18, `CARGO_INCREMENTAL=0`, perfil `test` con `debug = 0`,
+compilación de `residuum` desde cero con dependencias ya compiladas; tests
+activos contados con `--list` a través del runner:
+
+| Selección | Target | Pico cgroup (MiB) | Tests activos |
+|---|---|---:|---:|
+| todas (sin features) | lib | 582 | 291 |
+| `test-core` | lib | 471 | 149 |
+| `test-residual` | lib | 510 | 222 |
+| `test-experiments` | lib | 552 | 218 |
+| todas (sin features) | cli | 575 | 195 |
+| `test-core` | cli | 373 | 122 |
+| `test-legal-geometry` | cli | 521 | 174 |
+| `test-legal-learning` | cli | 444 | 143 |
+
+La unión de los nombres de las familias de cada target es igual, test por
+test, al conjunto sin features; ningún test se pierde ni se duplica entre
+familias. Sin features la biblioteca midió 582 frente a 614 y 619 en otras
+ejecuciones del mismo caso: la variación entre corridas es de unos 40 MiB, del
+mismo orden que algunas diferencias de la tabla. El ahorro es mayor en el núcleo
+(≈ 110 a 200 MiB); `test-experiments` y `test-legal-geometry` quedan unos
+250 MiB bajo el freno de 768, frente a unos 190 sin features.
