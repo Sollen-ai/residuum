@@ -2,8 +2,10 @@
 //! The existing close initializes the state and remains the comparison oracle;
 //! `new_by_derivative` builds the same base with the derivative itself.
 
+#[cfg(test)]
+use super::match_event;
 use super::{
-    AntecedentMatch, DerivationClock, KnownIndex, KnownView, finish_instantiation, match_event,
+    AntecedentMatch, DerivationClock, KnownIndex, KnownView, finish_instantiation,
     retain_derivation,
 };
 use crate::typed::{Antecedent, Closure, DerivedEvent, Event, Rule, RuleBody, UnstampedDerivation};
@@ -179,17 +181,6 @@ impl IncrementalClosure {
     }
 }
 
-fn leaves<'a>(antecedent: &'a Antecedent, atoms: &mut Vec<&'a Event>) {
-    match antecedent {
-        Antecedent::Unit => {}
-        Antecedent::Event(event) => atoms.push(event),
-        Antecedent::And(a, b) => {
-            leaves(a, atoms);
-            leaves(b, atoms);
-        }
-    }
-}
-
 fn instantiate_delta(
     rule: &Rule,
     known: KnownView<'_>,
@@ -215,7 +206,34 @@ fn instantiate_delta(
     candidates
 }
 
-pub(super) fn match_delta_antecedents(
+pub(super) fn match_delta_antecedents<'v>(
+    antecedent: &Antecedent,
+    parameters: &[crate::typed::Arg],
+    known: super::KnownView<'v>,
+    delta: super::KnownView<'v>,
+    initial: &std::collections::BTreeMap<String, crate::typed::SubstitutionValue>,
+    stats: &mut IncrementalStats,
+) -> Vec<AntecedentMatch> {
+    #[cfg(test)]
+    if super::profile::copying_join() {
+        return match_delta_antecedents_copying(
+            antecedent, parameters, known, delta, initial, stats,
+        );
+    }
+    super::join::match_delta(
+        antecedent,
+        parameters,
+        known,
+        delta,
+        initial,
+        &mut stats.delta_pivot_matches,
+    )
+}
+
+/// The breadth-first join that `join::match_delta` replaced, kept as the
+/// reference it is compared with.
+#[cfg(test)]
+fn match_delta_antecedents_copying(
     antecedent: &Antecedent,
     parameters: &[crate::typed::Arg],
     known: super::KnownView<'_>,
@@ -224,7 +242,7 @@ pub(super) fn match_delta_antecedents(
     stats: &mut IncrementalStats,
 ) -> Vec<AntecedentMatch> {
     let mut atoms = Vec::new();
-    leaves(antecedent, &mut atoms);
+    super::join::leaves(antecedent, &mut atoms);
     let mut result = Vec::new();
     // Frontier membership, built only when some pivot has earlier positions.
     let mut fresh_keys: Option<BTreeSet<&Event>> = None;

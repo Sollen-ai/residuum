@@ -20,7 +20,7 @@ de rondas y `PropositionTime` ([discrete-derivative.md](discrete-derivative.md) 
 | 2 | Mapa verbo → reglas relevantes | Medio | Bajo | `incremental.rs`, `program_incremental.rs` |
 | 3 | Orden de uniones por selectividad | Medio | Medio | `match_delta_antecedents` |
 | 4 | Evaluación por componentes de dependencia | Medio | Medio | schedulers de cierre |
-| 5 | Menos copias en el join | Medio (constante) | Bajo | matching |
+| 5 | Menos copias en el join | Medio (constante) | Bajo | matching — **aplicada** en parte |
 | 6 | Rondas con instantánea de Known | Bajo–medio | Medio | `update`, `drain` |
 | 7 | Explicación bajo demanda | Alto en memoria | Alto (contrato) | `Closure`, `explain` |
 | 8 | Procedencia en semianillos | Nueva capacidad | Alto (diseño) | capa de consulta |
@@ -155,6 +155,28 @@ eventos con identificadores estables.
 
 **Verificar.** Mismos resultados exactos; medir con el profiler
 `profile_semi_naive_polynomial_product_fixture`.
+
+**Aplicado en parte (2026-11-18).** `derive/join.rs` sustituye los joins en
+anchura de `match_antecedents_in` y `match_delta_antecedents` por una búsqueda
+en profundidad con un solo mapa de bindings y testigos como referencias a
+Known, clonados sólo al completar un match. Un intento de `match_event` se
+deshace quitando los binders que no estaban; basta porque todo valor del mapa
+es canónico (`bind_typed` sólo inserta valores canónicos y los mapas iniciales
+se construyen con él), así que reescribir un binder presente deja el mismo
+valor. Recorrer los átomos en orden y los candidatos en orden de Known da los
+matches en el mismo orden lexicográfico que el join en anchura. Los joins
+anteriores quedan como referencia de test (`profile::reference_join`).
+
+No se hizo: testigos como posiciones `usize`, bindings como pila sin mapa ni
+eventos internados.
+
+Verificación: `depth_first_join_matches_copying_join_with_identical_provenance`
+(`Debug` idéntico en `partialProduct` y los mismos contadores, incluidos
+sondeos y rechazos) y `depth_first_delta_join_keeps_incremental_updates`
+(deltas y cierres de `IncrementalClosure` e `IncrementalProgramClosure` en tres
+escenarios), además de 89 tests existentes de incremental, residual, regresión
+monótona y Peano, ejecutados individualmente. `matching_ms` en `partialProduct`,
+build de tests sin optimizar, dos corridas: 566 → 382 y 596 → 486.
 
 ## 6. Rondas con instantánea de Known
 

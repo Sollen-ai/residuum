@@ -310,6 +310,84 @@ fn argument_index_keeps_incremental_updates_equal_to_linear_scan() {
 }
 
 #[test]
+fn depth_first_join_matches_copying_join_with_identical_provenance() {
+    // Item 5 of docs/semi-naive-pending-optimizations.md: the same closure, in
+    // the same order with the same stamps, and the same matching counters.
+    let (module, seeds) = product("partialProduct");
+    let (original, copying) = {
+        let _reference = profile::reference_join();
+        let session = profile::Session::new("partialProduct copying join");
+        let closure =
+            close_program_reference(seeds.clone(), &module, &mut Clock::default()).unwrap();
+        (closure, session.finish())
+    };
+    let session = profile::Session::new("partialProduct depth-first join");
+    let closure = close_program_reference(seeds, &module, &mut Clock::default()).unwrap();
+    let stats = session.finish();
+    assert_eq!(format!("{original:?}"), format!("{closure:?}"));
+    assert_eq!(
+        (
+            stats.rounds,
+            stats.evaluations,
+            stats.candidates,
+            stats.duplicates,
+            stats.comparisons,
+            stats.probes,
+            stats.header_rejects,
+            stats.structural_rejects
+        ),
+        (
+            copying.rounds,
+            copying.evaluations,
+            copying.candidates,
+            copying.duplicates,
+            copying.comparisons,
+            copying.probes,
+            copying.header_rejects,
+            copying.structural_rejects
+        )
+    );
+}
+
+#[test]
+fn depth_first_delta_join_keeps_incremental_updates() {
+    // The delta join with pivots, frontier exclusion and initial bindings:
+    // ordinary rules, then the module closure with program activations.
+    let module = load("peano_polynomial_product_scenario.res");
+    let rules = module
+        .declarations
+        .iter()
+        .filter_map(|d| match d {
+            Declaration::Rule(r) => Some(r.clone()),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    for name in ["unitProduct", "gapsProduct", "partialProduct"] {
+        let seeds = input(&module, name);
+        let split = seeds.len() / 2;
+        let run = || {
+            let mut clock = Clock::default();
+            let mut ordinary = IncrementalClosure::new(seeds[..split].to_vec(), &rules, &mut clock);
+            let mut programs =
+                IncrementalProgramClosure::new(seeds[..split].to_vec(), &module, &mut clock)
+                    .unwrap();
+            let mut trace = String::new();
+            for seed in &seeds[split..] {
+                let a = ordinary.update(vec![seed.clone()], &mut clock);
+                let b = programs.update(vec![seed.clone()], &mut clock);
+                trace.push_str(&format!("{a:?}\n{b:?}\n"));
+            }
+            format!("{trace}{:?}\n{:?}", ordinary.closure(), programs.closure())
+        };
+        let expected = {
+            let _reference = profile::reference_join();
+            run()
+        };
+        assert_eq!(expected, run(), "{name}");
+    }
+}
+
+#[test]
 fn indexed_known_preserves_negative_cycles_unit_and_new_justifications() {
     let module = load("discrete_derivative.res");
     let rules = module

@@ -216,6 +216,22 @@ impl Drop for HeaderOnly {
         HEADER_ONLY.with(|mode| mode.set(self.0));
     }
 }
+// Test-only: use the breadth-first joins that clone bindings per candidate.
+thread_local! {
+    static COPYING_JOIN: Cell<bool> = const { Cell::new(false) };
+}
+pub(super) fn copying_join() -> bool {
+    COPYING_JOIN.with(Cell::get)
+}
+pub(super) struct CopyingJoin(bool);
+pub(super) fn reference_join() -> CopyingJoin {
+    CopyingJoin(COPYING_JOIN.with(|mode| mode.replace(true)))
+}
+impl Drop for CopyingJoin {
+    fn drop(&mut self) {
+        COPYING_JOIN.with(|mode| mode.set(self.0));
+    }
+}
 pub(super) fn structural_reject() {
     if ENABLED.with(Cell::get) {
         STRUCTURAL_REJECTS.with(|c| c.set(c.get() + 1));

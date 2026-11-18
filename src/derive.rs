@@ -4,6 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 mod incremental;
 mod steps;
 pub use steps::{DerivativeSession, DerivativeStep, ForwardSession, ForwardStep};
+mod join;
 mod known_index;
 mod program_incremental;
 use known_index::{KnownIndex, KnownView};
@@ -544,6 +545,29 @@ fn match_antecedents_in(
     substitutions: BTreeMap<String, SubstitutionValue>,
     antecedents: Vec<Event>,
 ) -> Vec<AntecedentMatch> {
+    #[cfg(test)]
+    if profile::copying_join() {
+        return match_antecedents_copying(
+            antecedent,
+            known,
+            parameters,
+            substitutions,
+            antecedents,
+        );
+    }
+    join::match_antecedents(antecedent, known, parameters, substitutions, antecedents)
+}
+
+/// The recursive join that `join::match_antecedents` replaced, kept as the
+/// reference it is compared with.
+#[cfg(test)]
+fn match_antecedents_copying(
+    antecedent: &Antecedent,
+    known: KnownView<'_>,
+    parameters: &[Arg],
+    substitutions: BTreeMap<String, SubstitutionValue>,
+    antecedents: Vec<Event>,
+) -> Vec<AntecedentMatch> {
     match antecedent {
         Antecedent::Unit => vec![AntecedentMatch {
             antecedents,
@@ -563,10 +587,10 @@ fn match_antecedents_in(
             })
             .collect(),
         Antecedent::And(left, right) => {
-            match_antecedents_in(left, known, parameters, substitutions, antecedents)
+            match_antecedents_copying(left, known, parameters, substitutions, antecedents)
                 .into_iter()
                 .flat_map(|matched| {
-                    match_antecedents_in(
+                    match_antecedents_copying(
                         right,
                         known,
                         parameters,
