@@ -24,7 +24,7 @@ de rondas y `PropositionTime` ([discrete-derivative.md](discrete-derivative.md) 
 | 6 | Rondas con instantánea de Known | Bajo–medio | Medio | `update`, `drain` |
 | 7 | Explicación bajo demanda | Alto en memoria | Alto (contrato) | `Closure`, `explain` |
 | 8 | Procedencia en semianillos | Nueva capacidad | Alto (diseño) | capa de consulta |
-| 9 | Prueba mínima: tropical y (min, max) | Nueva capacidad; `explain` más legible | Medio | capa de procedencia, `explain` |
+| 9 | Prueba mínima: tropical y (min, max) | Nueva capacidad; `explain` más legible | Medio | capa de procedencia, `explain` — **aplicada** como pasada posterior |
 | 10 | Uniones *worst-case optimal* | Alto en cuerpos cíclicos | Alto | matching |
 | 11 | Evaluación dirigida por objetivo | Depende de la consulta | Alto | residual / forward |
 | 12 | FOUR por modelo menos informado | Alto: de 4ⁿ a polinomial | Medio | `experiments/four.rs` |
@@ -244,6 +244,25 @@ tocar el cierre forward, como primer paso de bajo riesgo.
 **Verificar.** Comparar contra la enumeración exhaustiva de pruebas en las
 fixtures pequeñas (`forward_provenance.res` tiene dos caminos a `shared`) y
 contra un Bellman-Ford de referencia sobre el hipergrafo.
+
+**Aplicado como pasada posterior (2026-11-18).** `derive::minimum_proof_sizes`
+(tropical, con un peso por justificación) y `derive::kleene_stages`
+((min, max)) anotan un `Closure` ya calculado sin modificarlo; las semillas se
+pasan explícitamente porque el cierre no las marca. El algoritmo es la
+generalización de Dijkstra de Knuth: cada evento se fija una vez en orden de
+costo creciente, también con ciclos. `ProofCosts.optimal` conserva todas las
+justificaciones que alcanzan el mínimo, en el orden de `closure.derivations`.
+
+Verificación (`src/derive/proof_cost_tests.rs`): en `forward_provenance.res`
+`shared` tiene costo 1 con las dos justificaciones `fromA` y `fromB`, `result`
+2 y el axioma `ready` costo y etapa 1; tamaños con peso unitario y no uniforme
+y etapas coinciden con una relajación tipo Bellman-Ford en cuatro escenarios
+del producto y en los 2ⁿ subconjuntos de semillas de
+`discrete_derivative.res` (con ciclos); y la etapa de cada evento es la ronda
+en que `ForwardSession` lo añade.
+
+Pendiente: presentarlo en `explain`, y la versión incremental, en la que una
+adición puede bajar el costo de un evento viejo y la frontera debe incluirlo.
 
 ## 10. Uniones *worst-case optimal*
 

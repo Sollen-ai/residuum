@@ -6,11 +6,15 @@ mod steps;
 pub use steps::{DerivativeSession, DerivativeStep, ForwardSession, ForwardStep};
 mod known_index;
 mod program_incremental;
+mod proof_cost;
 use known_index::{KnownIndex, KnownView};
+pub use proof_cost::{ProofCosts, kleene_stages, minimum_proof_sizes};
 #[cfg(test)]
 mod profile;
 #[cfg(test)]
 mod profile_tests;
+#[cfg(test)]
+mod proof_cost_tests;
 pub use incremental::{ClosureDelta, IncrementalClosure, IncrementalStats};
 pub use program_incremental::{IncrementalProgramClosure, ProgramActivation, ProgramClosureDelta};
 
