@@ -84,6 +84,21 @@ fn prepare(
     experiment: &Experiment,
     rules: &[Rule],
 ) -> Result<(Vec<Event>, Vec<crate::typed::HornClause>), Error> {
+    let (atoms, clauses) = prepare_ground(experiment, rules)?;
+    if atoms.len() > 4 {
+        return Err(Error::new(
+            "fourFusion fixture comparison supports at most four ground atoms",
+        ));
+    }
+    Ok((atoms, clauses))
+}
+
+/// The ground, constant and single-time checks of the comparison, without the
+/// bound on the number of atoms that only the enumeration needs.
+fn prepare_ground(
+    experiment: &Experiment,
+    rules: &[Rule],
+) -> Result<(Vec<Event>, Vec<crate::typed::HornClause>), Error> {
     if rules.iter().any(|rule| !rule.parameters.is_empty()) {
         return Err(Error::new(
             "fourFusion fixture comparison requires ground rules",
@@ -99,11 +114,6 @@ fn prepare(
     for clause in &clauses {
         collect(&clause.antecedent, &mut atoms);
         atoms.insert(key(&clause.consequent));
-    }
-    if atoms.len() > 4 {
-        return Err(Error::new(
-            "fourFusion fixture comparison supports at most four ground atoms",
-        ));
     }
     // This finite comparison retains its single-index experimental domain.
     // The scoped forward matcher itself also supports other literal indices.
@@ -133,6 +143,136 @@ fn world(atoms: &[Event], mask: usize) -> BTreeMap<Event, Value> {
             )
         })
         .collect()
+}
+
+/// The knowledge-least model of the premises and rules
+/// (docs/semi-naive-pending-optimizations.md §12).
+///
+/// Every model condition is a Horn clause over the 2n bits `p(a)`, `n(a)`, so
+/// the models are closed under the componentwise conjunction, which is the
+/// knowledge meet, and B is always a model. `p` is knowledge-monotone, so the
+/// goal holds in every model exactly when it holds in this one. Unlike
+/// [`entailment`], this does not count models and has no bound on the atoms.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FourLeastModel {
+    /// Positive-polarity keys of the ground atoms, in sorted order.
+    pub atoms: Vec<Event>,
+    /// `(p, n)` of each atom in the least model, aligned with `atoms`.
+    pub values: Vec<(bool, bool)>,
+    /// Compiled Horn clauses over the bits, including premises.
+    pub clauses: usize,
+    pub entailed: bool,
+}
+
+/// A bit of the compiled problem: `2 * atom` is p, `2 * atom + 1` is n.
+type Bit = usize;
+
+struct Compiler<'a> {
+    atoms: &'a [Event],
+    clauses: Vec<(Vec<Bit>, Bit)>,
+}
+impl Compiler<'_> {
+    /// Bit of component p (or n) of a literal; a negative literal swaps them.
+    fn bit(&self, event: &Event, positive_component: bool) -> Bit {
+        let index = self
+            .atoms
+            .binary_search(&key(event))
+            .expect("prepared atom");
+        let p = positive_component == (event.polarity == Polarity::Positive);
+        2 * index + usize::from(!p)
+    }
+    fn p_bits(&self, antecedent: &Antecedent, output: &mut Vec<Bit>) {
+        match antecedent {
+            Antecedent::Unit => {}
+            Antecedent::Event(event) => output.push(self.bit(event, true)),
+            Antecedent::And(a, b) => {
+                self.p_bits(a, output);
+                self.p_bits(b, output);
+            }
+        }
+    }
+    /// Backward half of `le`: `guard => n(antecedent)`, where
+    /// `n(x * y) = (p(y) => n(x)) and (p(x) => n(y))`.
+    fn n_clauses(&mut self, antecedent: &Antecedent, guard: Vec<Bit>) {
+        match antecedent {
+            Antecedent::Unit => {}
+            Antecedent::Event(event) => {
+                let head = self.bit(event, false);
+                self.clauses.push((guard, head));
+            }
+            Antecedent::And(a, b) => {
+                let mut left = guard.clone();
+                self.p_bits(b, &mut left);
+                let mut right = guard;
+                self.p_bits(a, &mut right);
+                self.n_clauses(a, left);
+                self.n_clauses(b, right);
+            }
+        }
+    }
+}
+
+pub fn four_least_model(experiment: &Experiment, rules: &[Rule]) -> Result<FourLeastModel, Error> {
+    let (atoms, rule_clauses) = prepare_ground(experiment, rules)?;
+    let mut compiler = Compiler {
+        atoms: &atoms,
+        clauses: Vec::new(),
+    };
+    for fact in &experiment.input {
+        let head = compiler.bit(fact, true);
+        compiler.clauses.push((Vec::new(), head));
+    }
+    for clause in &rule_clauses {
+        // Forward half of `le`: p(antecedent) => p(consequent); I has p = 1.
+        let mut body = Vec::new();
+        compiler.p_bits(&clause.antecedent, &mut body);
+        let head = compiler.bit(&clause.consequent, true);
+        compiler.clauses.push((body, head));
+        let guard = vec![compiler.bit(&clause.consequent, false)];
+        compiler.n_clauses(&clause.antecedent, guard);
+    }
+    let bits = propagate(2 * atoms.len(), &mut compiler.clauses);
+    let goal = compiler.bit(&experiment.goal, true);
+    Ok(FourLeastModel {
+        values: (0..atoms.len())
+            .map(|i| (bits[2 * i], bits[2 * i + 1]))
+            .collect(),
+        clauses: compiler.clauses.len(),
+        entailed: bits[goal],
+        atoms,
+    })
+}
+
+/// Least model of definite Horn clauses by counter-based unit propagation,
+/// linear in the total size of the (deduplicated) bodies.
+fn propagate(bits: usize, clauses: &mut [(Vec<Bit>, Bit)]) -> Vec<bool> {
+    let mut watchers: Vec<Vec<usize>> = vec![Vec::new(); bits];
+    let mut missing = Vec::with_capacity(clauses.len());
+    let mut queue = Vec::new();
+    let mut on = vec![false; bits];
+    for (index, (body, head)) in clauses.iter_mut().enumerate() {
+        body.sort_unstable();
+        body.dedup();
+        for bit in body.iter() {
+            watchers[*bit].push(index);
+        }
+        missing.push(body.len());
+        if body.is_empty() && !on[*head] {
+            on[*head] = true;
+            queue.push(*head);
+        }
+    }
+    while let Some(bit) = queue.pop() {
+        for &index in &watchers[bit] {
+            missing[index] -= 1;
+            let head = clauses[index].1;
+            if missing[index] == 0 && !on[head] {
+                on[head] = true;
+                queue.push(head);
+            }
+        }
+    }
+    on
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
