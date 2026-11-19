@@ -64,6 +64,7 @@ struct Coverage {
     negative: usize,
     batches: usize,
     skipped: usize,
+    unbuilt: usize,
 }
 
 /// Deltas and closures as Debug text, with `rules_examined` zeroed: it is the
@@ -181,17 +182,28 @@ fn sweep(select: impl Fn(&Path) -> bool) -> (usize, Coverage) {
                 run(&module, &rules, &experiment.input, programs)
             };
             assert_eq!(filtered, every, "{} {}", path.display(), experiment.name);
+            // A program closure that cannot be built compares nothing.
+            if filtered.is_empty() {
+                coverage.unbuilt += 1;
+                continue;
+            }
             assert!(examined <= examined_every);
-            coverage.skipped += examined_every - examined;
-            coverage.residual += rules
-                .iter()
-                .filter(|r| matches!(r.body, RuleBody::ResidualClause(_)))
-                .count();
-            coverage.unit_only += bodies.iter().filter(|b| only_unit(&b.antecedent)).count();
-            coverage.negative += bodies
-                .iter()
-                .filter(|b| has_negative(&b.antecedent))
-                .count();
+            let skipped = examined_every - examined;
+            coverage.skipped += skipped;
+            // Experiments where the filter skipped work in a module with each
+            // kind of rule; not proof that a rule of that kind was skipped.
+            if skipped > 0 {
+                let kinds = [
+                    rules
+                        .iter()
+                        .any(|r| matches!(r.body, RuleBody::ResidualClause(_))),
+                    bodies.iter().any(|b| only_unit(&b.antecedent)),
+                    bodies.iter().any(|b| has_negative(&b.antecedent)),
+                ];
+                coverage.residual += usize::from(kinds[0]);
+                coverage.unit_only += usize::from(kinds[1]);
+                coverage.negative += usize::from(kinds[2]);
+            }
             coverage.batches +=
                 usize::from(experiment.input.len() - experiment.input.len() / 2 > 1);
             compared += 1;

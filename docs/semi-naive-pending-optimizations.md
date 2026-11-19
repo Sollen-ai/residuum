@@ -126,10 +126,15 @@ completos en actualizaciones de una semilla sobre los escenarios del producto.
 (cierre con programas).
 `src/derive/relevance_tests.rs` extiende la comparación a todas las fixtures
 de `examples/` salvo seis de carga (las mismas que `known_index_tests.rs`):
-281 experimentos, con `IncrementalClosure` o `IncrementalProgramClosure` según
-el módulo, en un lote de varios eventos y evento por evento. Incluyen 20 reglas
-residuales, reglas con sólo `I` y átomos `EvidentialNot`; el filtro se saltó
-unos 33 000 exámenes de regla sin cambiar ningún delta ni cierre.
+243 experimentos comparados, con `IncrementalClosure` o
+`IncrementalProgramClosure` según el módulo, en un lote de varios eventos y
+evento por evento; otros 38, de módulos con Programs cuyo cierre no se puede
+construir (`IncrementalProgramClosure::new` falla), no se cuentan. El filtro se
+saltó unos 33 000 exámenes de regla sin cambiar ningún delta ni cierre. En 4
+experimentos se saltó trabajo en módulos con reglas residuales, en 58 en
+módulos con reglas de sólo `I` y en 125 en módulos con átomos
+`EvidentialNot`; eso muestra que esos módulos están cubiertos, no que se haya
+saltado precisamente una regla de cada tipo.
 
 Cambio observable: `IncrementalStats.rules_examined`, que imprime la salida
 `--incremental`, cuenta ahora sólo las reglas relevantes a la frontera de cada
