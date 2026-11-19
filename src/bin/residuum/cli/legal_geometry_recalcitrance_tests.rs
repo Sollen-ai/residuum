@@ -8,7 +8,7 @@ fn artifact(name: &str, text: &str) {
     save(&format!("recalcitrance-{name}"), text);
     let dir = root().join("docs/legal-geometry/recalcitrance");
     std::fs::create_dir_all(&dir).unwrap();
-    std::fs::write(dir.join(name), text).unwrap();
+    std::fs::write(dir.join(name), portable(text)).unwrap();
 }
 
 fn name(mask: usize) -> String {

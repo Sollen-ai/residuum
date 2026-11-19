@@ -9,7 +9,7 @@ fn write_artifact(name: &str, text: &str) {
     save(&format!("conversation-{name}"), text);
     let dir = root().join("docs/legal-geometry/conversation");
     std::fs::create_dir_all(&dir).unwrap();
-    std::fs::write(dir.join(name), text).unwrap();
+    std::fs::write(dir.join(name), portable(text)).unwrap();
 }
 
 fn rows(path: &str) -> Vec<Vec<String>> {
