@@ -26,6 +26,23 @@ MIB = 1024 * 1024
 # test build peaks near 723 MiB from scratch. The 256 MiB stop margin is kept.
 MEMORY_LIMIT = 1324 * MIB
 STOP_MEMORY = 1068 * MIB
+# Benchmark mode only (--benchmark), authorized by the owner on 2026-11-19:
+# release builds may take this long. Every other compilation keeps 45 s, and
+# the memory limits above are unchanged.
+BENCHMARK_COMPILE_TIMEOUT = 600
+# The pre-2026-11-19 pair. Binaries from before the raise refuse to run
+# unless their cgroup has exactly this limit, so the benchmark runs them under
+# it; it is stricter than the current one.
+LEGACY_MEMORY_LIMIT = 1024 * MIB
+LEGACY_STOP_MEMORY = 768 * MIB
+HEAVY_FIXTURES = (
+    'examples/experiments/peano_after.res',
+    'examples/experiments/peano_multiplication.res',
+    'examples/experiments/peano_polynomial_scenario.res',
+    'examples/experiments/peano_polynomial_product_scenario.res',
+    'examples/experiments/program_incremental_scaling.res',
+    'examples/experiments/program_proof_scaling.res',
+)
 
 
 def group_path():
@@ -45,14 +62,18 @@ def kill_process_group(process):
 def worker(report, index):
     request = json.loads((report / f'{index:02d}.request.json').read_text())
     group = group_path()
-    if ((group / 'memory.max').read_text().strip() != str(MEMORY_LIMIT)
+    memory_limit = request.get('memory_limit', MEMORY_LIMIT)
+    stop_memory = request.get('stop_memory', STOP_MEMORY)
+    if memory_limit > MEMORY_LIMIT or stop_memory > STOP_MEMORY:
+        raise RuntimeError('requested limits exceed the runner limits; refusing execution')
+    if ((group / 'memory.max').read_text().strip() != str(memory_limit)
             or (group / 'memory.swap.max').read_text().strip() != '0'):
         raise RuntimeError('RAM/swap limits are not enforced; refusing execution')
     samples = collections.deque()
     reason = None
     started = time.monotonic()
     with (report / f'{index:02d}.output.txt').open('w') as output:
-        process = subprocess.Popen(request['command'], cwd=ROOT, stdout=output,
+        process = subprocess.Popen(request['command'], cwd=request.get('cwd', ROOT), stdout=output,
                                    stderr=subprocess.STDOUT, start_new_session=True)
         try:
             while process.poll() is None:
@@ -60,7 +81,7 @@ def worker(report, index):
                 peak = int((group / 'memory.peak').read_text())
                 if now - started >= request['timeout']:
                     reason = 'timeout'
-                elif peak >= STOP_MEMORY:
+                elif peak >= stop_memory:
                     reason = 'near_memory_limit'
                 rss = 0
                 try:
@@ -87,7 +108,7 @@ def worker(report, index):
             raise
     events = dict(line.split() for line in (group / 'memory.events').read_text().splitlines())
     peak_group = int((group / 'memory.peak').read_text())
-    if peak_group >= STOP_MEMORY:
+    if peak_group >= stop_memory:
         reason = reason or 'near_memory_limit'
     if int(events.get('oom', 0)) or int(events.get('oom_kill', 0)):
         reason = reason or 'cgroup_oom'
@@ -105,13 +126,18 @@ def worker(report, index):
     return 0 if reason is None else 1
 
 
-def run_bounded(report, rows, stage, name, command, timeout, diagnostics=None):
+def run_bounded(report, rows, stage, name, command, timeout, diagnostics=None,
+                memory_limit=MEMORY_LIMIT, stop_memory=STOP_MEMORY, cwd=ROOT):
+    # Callers may only tighten the limits; the worker checks this again.
+    if memory_limit > MEMORY_LIMIT or stop_memory > STOP_MEMORY:
+        raise RuntimeError('requested limits exceed the runner limits; refusing execution')
     index = len(rows) + 1
-    request = dict(stage=stage, name=name, command=command, timeout=timeout)
+    request = dict(stage=stage, name=name, command=command, timeout=timeout,
+                   memory_limit=memory_limit, stop_memory=stop_memory, cwd=str(cwd))
     (report / f'{index:02d}.request.json').write_text(json.dumps(request, indent=2) + '\n')
     unit = f'residuum-safe-{os.getpid()}-{index}'
     scope = ['/usr/bin/systemd-run', '--user', '--scope', '--quiet', f'--unit={unit}',
-             f'--property=MemoryMax={MEMORY_LIMIT}', '--property=MemorySwapMax=0',
+             f'--property=MemoryMax={memory_limit}', '--property=MemorySwapMax=0',
              '--property=CPUQuota=100%', sys.executable, str(Path(__file__).resolve()),
              '--worker', str(report), str(index)]
     with (report / f'{index:02d}.scope.txt').open('w') as output:
@@ -137,6 +163,69 @@ def run_bounded(report, rows, stage, name, command, timeout, diagnostics=None):
         raise RuntimeError(f'{name}: {row["stop_reason"]}; no remaining tests executed. '
                            f'See {report / f"{index:02d}.output.txt"}')
     return report / f'{index:02d}.output.txt'
+
+
+def release_binary(report, rows, label, cwd):
+    # The only compilation allowed BENCHMARK_COMPILE_TIMEOUT; same memory limits.
+    output = run_bounded(report, rows, 'compile', f'compile release {label}',
+                         ['cargo', 'build', '--offline', '--locked', '--release', '--bin', 'residuum',
+                          '--jobs', '1', '--message-format=json'], BENCHMARK_COMPILE_TIMEOUT, cwd=cwd)
+    binaries = []
+    for line in output.read_text().splitlines():
+        try:
+            message = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if (message.get('reason') == 'compiler-artifact' and message.get('executable')
+                and message.get('target', {}).get('name') == 'residuum'
+                and 'bin' in message.get('target', {}).get('kind', [])
+                and not message.get('profile', {}).get('test')):
+            binaries.append(Path(message['executable']))
+    if len(binaries) != 1:
+        raise RuntimeError(f'Expected one release binary for {label}; refusing execution')
+    return binaries[0]
+
+
+def benchmark(report, rows, baseline, repetitions):
+    sha = subprocess.run(['git', 'rev-parse', '--verify', f'{baseline}^{{commit}}'], cwd=ROOT,
+                         capture_output=True, text=True, check=True).stdout.strip()
+    head = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=ROOT, capture_output=True,
+                          text=True, check=True).stdout.strip()
+    tree = ROOT / 'target' / 'benchmark' / sha[:12]
+    if not tree.exists():
+        subprocess.run(['git', 'worktree', 'add', '--detach', str(tree), sha], cwd=ROOT,
+                       check=True, capture_output=True)
+    # Binaries from before the limit raise insist on exactly the legacy cgroup
+    # limit; read it from the baseline's own launcher check.
+    source = subprocess.run(['git', 'show', f'{sha}:src/bin/residuum.rs'], cwd=ROOT,
+                            capture_output=True, text=True, check=True).stdout
+    legacy = f'"{LEGACY_MEMORY_LIMIT}"' in source
+    versions = [
+        ('baseline', release_binary(report, rows, 'baseline', tree), tree,
+         LEGACY_MEMORY_LIMIT if legacy else MEMORY_LIMIT, LEGACY_STOP_MEMORY if legacy else STOP_MEMORY),
+        ('current', release_binary(report, rows, 'current', ROOT), ROOT, MEMORY_LIMIT, STOP_MEMORY),
+    ]
+    results = []
+    for fixture in HEAVY_FIXTURES:
+        row = dict(fixture=fixture)
+        for label, binary, cwd, memory_limit, stop_memory in versions:
+            output = run_bounded(report, rows, 'benchmark', f'{label} {fixture}',
+                                 [sys.executable, str(ROOT / 'scripts' / 'benchmark_helper.py'),
+                                  str(binary), 'run', str(cwd / fixture), str(repetitions), '12'],
+                                 15, memory_limit=memory_limit, stop_memory=stop_memory, cwd=cwd)
+            row[label] = json.loads(output.read_text().strip().splitlines()[-1])
+        results.append(row)
+    summary = dict(baseline=sha, current=head, repetitions=repetitions, fixtures=results)
+    (ROOT / 'target' / 'benchmark-results.json').write_text(json.dumps(summary, indent=2) + '\n')
+    median = lambda values: sorted(values)[len(values) // 2]
+    print(f'baseline {sha[:7]} vs current {head[:7]}; median of up to {repetitions} runs (s)')
+    for row in results:
+        b, c = row['baseline']['seconds'], row['current']['seconds']
+        print(f'{row["fixture"]} | {median(b):.4f} [{min(b):.4f}-{max(b):.4f}] n={len(b)} | '
+              f'{median(c):.4f} [{min(c):.4f}-{max(c):.4f}] n={len(c)} | '
+              f'x{median(b) / median(c):.2f} | same output: '
+              f'{row["baseline"]["output_sha256"] == row["current"]["output_sha256"]}')
+    return 0
 
 
 def save_report(report, rows):
@@ -178,6 +267,12 @@ def main():
     parser.add_argument('--format', action='store_true')
     parser.add_argument('--clippy', action='store_true',
                         help='Run cargo clippy on every target with warnings as errors, as CI does')
+    parser.add_argument('--benchmark', action='store_true',
+                        help='Time release builds of HEAD and --baseline on the heavy fixtures')
+    parser.add_argument('--baseline', default='f3c8df3',
+                        help='Commit to compare against in --benchmark (default: before the 2026-11-18 optimizations)')
+    parser.add_argument('--repetitions', type=int, default=5,
+                        help='Runs per fixture and version in --benchmark (1..20)')
     parser.add_argument('--fixture', type=Path, help='Run one source-defined Formal fixture with the bounded example runner')
     parser.add_argument('--cli', choices=('run', 'query', 'explain', 'execute'), help='Run one CLI command on --fixture under the same limits')
     parser.add_argument('--steps', type=int, help='Bounded stepwise CLI transitions (1..4096)')
@@ -216,12 +311,20 @@ def main():
     if args.clippy and (args.fixture or args.test or args.binary or args.compile_only or families
                         or args.fmt_check or args.format or args.test_target != 'lib'):
         parser.error('--clippy runs alone: it checks every target and family')
+    if args.benchmark and (args.clippy or args.fixture or args.test or args.binary or args.compile_only
+                           or families or args.fmt_check or args.format or args.test_target != 'lib'
+                           or args.cli or args.incremental or args.forward or args.library):
+        parser.error('--benchmark runs alone')
+    if not 1 <= args.repetitions <= 20:
+        parser.error('--repetitions must be in 1..20')
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
     report = ROOT / 'target' / 'test-diagnostics' / f'{stamp}-{os.getpid()}'
     report.mkdir(parents=True)
     diagnostics = sys.stderr if args.cli else sys.stdout
     print(f'Reports: {report}', flush=True, file=diagnostics)
     rows = []
+    if args.benchmark:
+        return benchmark(report, rows, args.baseline, args.repetitions)
     if args.fixture:
         fixture = args.fixture.resolve()
         if not fixture.is_file() or fixture.stat().st_size > 64 * 1024:
