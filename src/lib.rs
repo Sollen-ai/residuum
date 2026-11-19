@@ -2332,14 +2332,11 @@ mod tests {
         let legal = elaborate_formal(surface).expect("Legal elaborates");
         let retention = default(&legal, "RetentionSale");
         assert_eq!(retention.parameters, rule(&legal, "retention").parameters);
-        assert_eq!(
-            retention.condition,
-            Some(Antecedent::Event(seeded_event(
-                "retentionAgreed",
-                ["debtor", "object", "creditor"],
-                "t",
-            )))
-        );
+        // `t` is a parameter of `retention`, so it elaborates to a temporal
+        // variable, distinct from a constant named `t` (TimeExpr::Var).
+        let mut agreed = seeded_event("retentionAgreed", ["debtor", "object", "creditor"], "t");
+        agreed.proposition.time = TimeExpr::Var("t".into());
+        assert_eq!(retention.condition, Some(Antecedent::Event(agreed)));
         assert!(default(&legal, "NormalSale").condition.is_none());
     }
 
