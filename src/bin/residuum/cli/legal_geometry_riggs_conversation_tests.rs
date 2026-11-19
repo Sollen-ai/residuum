@@ -357,7 +357,7 @@ fn best(data: &Data, state: &State) -> Vec<String> {
 fn artifact(name: &str, contents: &str) {
     let dir = root().join("docs/legal-geometry/riggs-conversation");
     std::fs::create_dir_all(&dir).unwrap();
-    std::fs::write(dir.join(name), contents).unwrap();
+    std::fs::write(dir.join(name), portable(contents)).unwrap();
 }
 fn export_stage(
     data: &Data,

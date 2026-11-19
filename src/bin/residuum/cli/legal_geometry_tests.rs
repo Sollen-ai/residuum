@@ -72,6 +72,12 @@ impl DerivationClock for Clock {
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }
+/// Reports committed under `docs/` name sources relative to the repository,
+/// so the same run from any checkout writes the same bytes.
+#[cfg(family_legal_learning)]
+fn portable(text: &str) -> String {
+    text.replace(&format!("{}/", root().display()), "")
+}
 fn module(name: &str) -> Module {
     residuum::load_formal_module(
         root().join(format!("examples/experiments/legal_geometry/{name}.res")),

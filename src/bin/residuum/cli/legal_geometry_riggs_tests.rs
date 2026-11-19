@@ -19,7 +19,7 @@ const CASES: [&str; 6] = [
 fn artifact(name: &str, contents: &str) {
     let dir = root().join("docs/legal-geometry/riggs");
     std::fs::create_dir_all(&dir).unwrap();
-    std::fs::write(dir.join(name), contents).unwrap();
+    std::fs::write(dir.join(name), portable(contents)).unwrap();
 }
 
 fn rows(name: &str) -> Vec<Vec<String>> {

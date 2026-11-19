@@ -55,7 +55,7 @@ fn generated_source() -> String {
 fn output(name: &str, text: &str) {
     let dir = root().join("docs/legal-geometry/riggs-rule-learning");
     std::fs::create_dir_all(&dir).unwrap();
-    std::fs::write(dir.join(name), text).unwrap();
+    std::fs::write(dir.join(name), portable(text)).unwrap();
 }
 
 fn candidate_name(mask: usize) -> String {
