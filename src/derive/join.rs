@@ -252,6 +252,8 @@ fn around<'w>(
         .candidates_bound(pattern, join.parameters, bindings)
     {
         if position < pivoted.pivot && pivoted.fresh.is_some_and(|f| f.contains(&candidate)) {
+            #[cfg(test)]
+            super::profile::fresh_exclusion();
             continue;
         }
         let Some(saved) = bind(
