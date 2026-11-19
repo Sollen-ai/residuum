@@ -5,7 +5,7 @@
 #[cfg(test)]
 use super::match_event;
 use super::{
-    AntecedentMatch, DerivationClock, KnownIndex, KnownView, finish_instantiation,
+    AntecedentMatch, DerivationClock, KnownIndex, KnownView, RuleHeaders, finish_instantiation,
     retain_derivation,
 };
 use crate::typed::{Antecedent, Closure, DerivedEvent, Event, Rule, RuleBody, UnstampedDerivation};
@@ -14,6 +14,10 @@ use std::collections::BTreeSet;
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct IncrementalStats {
     pub rounds: usize,
+    /// Rules matched against a frontier, summed over rounds. Rules that share
+    /// no antecedent header (verb, polarity, arity) with the round's frontier
+    /// are skipped and not counted, so this depends on the frontier's headers
+    /// as well as on the number of rules and rounds.
     pub rules_examined: usize,
     pub delta_pivot_matches: usize,
     pub full_matches: usize,
@@ -37,6 +41,8 @@ pub struct IncrementalClosure {
     known_keys: BTreeSet<Event>,
     /// Header index over `closure.known`; positions follow its order.
     index: KnownIndex,
+    /// Antecedent headers per rule, to skip rules the frontier cannot reach.
+    headers: RuleHeaders,
     seen: BTreeSet<UnstampedDerivation>,
 }
 
@@ -80,6 +86,7 @@ impl IncrementalClosure {
             closure,
             known_keys,
             index,
+            headers: RuleHeaders::new(rules),
             seen,
         }
     }
@@ -145,7 +152,11 @@ impl IncrementalClosure {
                 delta_view
             };
             let mut next = Vec::new();
-            for rule in &self.rules {
+            let relevant = relevant_rules(&self.headers, &frontier);
+            for (rule, relevant) in self.rules.iter().zip(relevant) {
+                if !relevant {
+                    continue;
+                }
                 delta.stats.rules_examined += 1;
                 #[cfg(test)]
                 let matching = super::profile::start();
@@ -179,6 +190,17 @@ impl IncrementalClosure {
         }
         delta
     }
+}
+
+/// Which rules can have a delta match, in rule order. A test switch evaluates
+/// all of them, to compare the derivation sequences with and without the filter.
+pub(super) fn relevant_rules(headers: &RuleHeaders, frontier: &[Event]) -> Vec<bool> {
+    let relevant = headers.relevant(frontier);
+    #[cfg(test)]
+    if super::profile::all_rules() {
+        return vec![true; relevant.len()];
+    }
+    relevant
 }
 
 fn instantiate_delta(

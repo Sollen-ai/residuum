@@ -7,13 +7,17 @@ pub use steps::{DerivativeSession, DerivativeStep, ForwardSession, ForwardStep};
 mod join;
 mod known_index;
 mod program_incremental;
+mod relevance;
 use known_index::{KnownIndex, KnownView};
+use relevance::RuleHeaders;
 #[cfg(test)]
 mod known_index_tests;
 #[cfg(test)]
 mod profile;
 #[cfg(test)]
 mod profile_tests;
+#[cfg(test)]
+mod relevance_tests;
 pub use incremental::{ClosureDelta, IncrementalClosure, IncrementalStats};
 pub use program_incremental::{IncrementalProgramClosure, ProgramActivation, ProgramClosureDelta};
 

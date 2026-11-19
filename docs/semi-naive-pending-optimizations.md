@@ -17,7 +17,7 @@ de rondas y `PropositionTime` ([discrete-derivative.md](discrete-derivative.md) 
 | # | Optimización | Impacto estimado | Riesgo | Toca |
 |---:|---|---|---|---|
 | 1 | Índice por argumentos ya ligados | Alto | Medio | `known_index.rs`, matching — **aplicada** |
-| 2 | Mapa verbo → reglas relevantes | Medio | Bajo | `incremental.rs`, `program_incremental.rs` |
+| 2 | Mapa verbo → reglas relevantes | Medio | Bajo | `incremental.rs`, `program_incremental.rs` — **aplicada** |
 | 3 | Orden de uniones por selectividad | Medio | Medio | `match_delta_antecedents` |
 | 4 | Evaluación por componentes de dependencia | Medio | Medio | schedulers de cierre |
 | 5 | Menos copias en el join | Medio (constante) | Bajo | matching — **aplicada** en parte |
@@ -106,6 +106,37 @@ valiendo.
 
 **Verificar.** Los tests existentes de igualdad con `close` y un test que
 compare la secuencia de `delta.derivations` con y sin el filtro.
+
+**Aplicado (2026-11-18).** `derive/relevance.rs` precalcula, por regla, los
+encabezados (verbo, polaridad, aridad) de sus átomos. En cada ronda delta,
+`IncrementalClosure::update` y `IncrementalProgramClosure` (reglas ordinarias
+y reglas de programas activados) examinan sólo las reglas con algún encabezado
+presente en la frontera, en el orden de `rules`. Es exacto porque
+`match_event` rechaza todo par con verbo, polaridad o aridad distintos, así que
+una regla sin encabezados en la frontera no tiene pivote. Las inicializaciones
+completas (ronda inicial y activaciones nuevas) no se filtran. Las reglas con
+sólo `I` nunca tenían match delta y ahora no se examinan.
+
+Verificación: `relevant_rules_keep_every_incremental_delta_and_its_order` y
+`relevant_rules_keep_program_closure_deltas_and_activations` comparan, con y
+sin el filtro (`profile::every_rule`), cierres, `delta.known`,
+`delta.derivations`, activaciones, inicializaciones, rondas, pivotes y matches
+completos en actualizaciones de una semilla sobre los escenarios del producto.
+`rules_examined` pasó de 2 544 a 72 (reglas ordinarias) y de 18 221 a 3 696
+(cierre con programas).
+`src/derive/relevance_tests.rs` extiende la comparación a todas las fixtures
+de `examples/` salvo seis de carga (las mismas que `known_index_tests.rs`):
+281 experimentos, con `IncrementalClosure` o `IncrementalProgramClosure` según
+el módulo, en un lote de varios eventos y evento por evento. Incluyen 20 reglas
+residuales, reglas con sólo `I` y átomos `EvidentialNot`; el filtro se saltó
+unos 33 000 exámenes de regla sin cambiar ningún delta ni cierre.
+
+Cambio observable: `IncrementalStats.rules_examined`, que imprime la salida
+`--incremental`, cuenta ahora sólo las reglas relevantes a la frontera de cada
+ronda, así que depende de los encabezados de la frontera además del número de
+reglas y rondas. `sells_tests` compara las estadísticas de dos actualizaciones
+equivalentes; sigue valiendo porque sus fronteras tienen los mismos
+encabezados en cada ronda.
 
 ## 3. Orden de uniones por selectividad
 

@@ -336,6 +336,9 @@ fn sells_real_and_hypothetical_updates_have_identical_incremental_deltas() {
                     derivations: b.derivations.clone(),
                 },
             );
+            // rules_examined counts only rules relevant to each round's
+            // frontier, so this also asserts that both frontiers carry the
+            // same headers in every round, as equivalent inputs do here.
             assert_eq!(a.stats, b.stats);
             let mut union = base.clone();
             union.extend(real.experiment.input.clone());

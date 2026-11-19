@@ -232,6 +232,22 @@ impl Drop for CopyingJoin {
         COPYING_JOIN.with(|mode| mode.set(self.0));
     }
 }
+// Test-only: evaluate every rule in each delta round, ignoring header relevance.
+thread_local! {
+    static ALL_RULES: Cell<bool> = const { Cell::new(false) };
+}
+pub(super) fn all_rules() -> bool {
+    ALL_RULES.with(Cell::get)
+}
+pub(super) struct AllRules(bool);
+pub(super) fn every_rule() -> AllRules {
+    AllRules(ALL_RULES.with(|mode| mode.replace(true)))
+}
+impl Drop for AllRules {
+    fn drop(&mut self) {
+        ALL_RULES.with(|mode| mode.set(self.0));
+    }
+}
 pub(super) fn structural_reject() {
     if ENABLED.with(Cell::get) {
         STRUCTURAL_REJECTS.with(|c| c.set(c.get() + 1));
