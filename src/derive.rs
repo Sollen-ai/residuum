@@ -11,6 +11,8 @@ use known_index::{KnownIndex, KnownView};
 mod profile;
 #[cfg(test)]
 mod profile_tests;
+#[cfg(test)]
+mod known_index_tests;
 pub use incremental::{ClosureDelta, IncrementalClosure, IncrementalStats};
 pub use program_incremental::{IncrementalProgramClosure, ProgramActivation, ProgramClosureDelta};
 

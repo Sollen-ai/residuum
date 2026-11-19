@@ -58,7 +58,8 @@ de encabezado un mapa por posición de argumento, de término ground exacto a
 posiciones ascendentes en Known; se construye de forma ansiosa, no perezosa.
 Lo usan los Known de nivel de cierre (`close`, `IncrementalClosure`,
 `IncrementalProgramClosure`, `ForwardSession`); las fronteras siguen con el
-índice de encabezado. `KnownView::candidates_bound` elige, entre las
+índice de encabezado. `ForwardSession` conserva su índice entre pasos y lo
+extiende con los eventos añadidos, en lugar de reconstruirlo en cada paso. `KnownView::candidates_bound` elige, entre las
 posiciones fijadas, la de menos posiciones: una constante o `None`, o un
 parámetro de tipo no temporal ya ligado a un término ground. Para esos casos
 `bind_term` sólo acepta igualdad exacta, así que el filtro no pierde ningún
@@ -71,6 +72,19 @@ Verificación: `argument_index_matches_linear_product_with_identical_provenance`
 salvo sondeos, y cada sondeo ahorrado era un rechazo estructural) y
 `argument_index_keeps_incremental_updates_equal_to_linear_scan`. El test
 anterior del índice de encabezado se conserva con `profile::header_only_index`.
+`src/derive/known_index_tests.rs` añade dos comparaciones. Una aleatoria, con
+semilla fija: `candidates_bound` contiene, en orden de Known, todo evento que
+`match_event` acepta, con constantes, `None`, records, constructores,
+parámetros de entidad, opcionales y temporales, variables que no son
+parámetros, ligaduras no ground o mal tipadas y eventos no ground en Known. Y
+un barrido de todas las fixtures de `examples/`: 122 módulos y 280
+experimentos, con `close` e `IncrementalClosure` (o `IncrementalProgramClosure`
+si el módulo tiene Programs, con activaciones) y `ForwardSession`, dan el mismo
+`Debug` que el barrido lineal. Quedan fuera, por el tiempo límite del runner
+con el barrido lineal, seis fixtures de carga: `peano_after`,
+`peano_multiplication`, `peano_polynomial_scenario`,
+`peano_polynomial_product_scenario` (su `partialProduct` se compara arriba),
+`program_incremental_scaling` y `program_proof_scaling`.
 Observado una vez, build de tests sin optimizar: sondeos 93 306 → 22 293,
 rechazos estructurales 81 277 → 10 264, `matching_ms` 632 → 248.
 
