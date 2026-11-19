@@ -2,7 +2,7 @@
 //! This is a query layer; it never augments the Horn closure.
 
 use super::{Error, FourEntailment, horn};
-use crate::typed::{Antecedent, Event, Experiment, Polarity, Rule, Term};
+use crate::typed::{Antecedent, Event, Experiment, HornClause, Polarity, Rule, Term};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Copy)]
@@ -57,20 +57,93 @@ fn evaluate(antecedent: &Antecedent, world: &BTreeMap<Event, Value>) -> Value {
         Antecedent::And(a, b) => evaluate(a, world).tensor(evaluate(b, world)),
     }
 }
-pub(super) fn entailment(experiment: &Experiment, rules: &[Rule]) -> Result<FourEntailment, Error> {
-    let (atoms, clauses) = prepare(experiment, rules)?;
-    let interpretations = 1 << (2 * atoms.len());
+/// A ground FOUR problem: premises, ground Horn clauses labelled by the rule
+/// each came from, the goal, and the sorted atoms they mention.
+///
+/// Only the constructors build it, and they check that every argument is a
+/// constant and every atom shares the goal's time, so the evaluators below
+/// never see a parameter. Bindings and scopes are resolved before this point.
+#[derive(Debug, Clone)]
+pub struct GroundProgram {
+    facts: Vec<Event>,
+    clauses: Vec<(String, HornClause)>,
+    goal: Event,
+    atoms: Vec<Event>,
+}
+impl GroundProgram {
+    /// The premises and goal of `experiment` with rules that have no parameters.
+    pub fn from_ground_rules(experiment: &Experiment, rules: &[Rule]) -> Result<Self, Error> {
+        if rules.iter().any(|rule| !rule.parameters.is_empty()) {
+            return Err(Error::new(
+                "fourFusion fixture comparison requires ground rules",
+            ));
+        }
+        Self::new(
+            &experiment.input,
+            &experiment.goal,
+            rules
+                .iter()
+                .map(|rule| (rule.name.clone(), horn(rule)))
+                .collect(),
+        )
+    }
+
+    fn new(
+        facts: &[Event],
+        goal: &Event,
+        clauses: Vec<(String, HornClause)>,
+    ) -> Result<Self, Error> {
+        let mut atoms: BTreeSet<Event> = facts.iter().chain([goal]).map(key).collect();
+        for (_, clause) in &clauses {
+            collect(&clause.antecedent, &mut atoms);
+            atoms.insert(key(&clause.consequent));
+        }
+        // This finite comparison retains its single-index experimental domain.
+        // The scoped forward matcher itself also supports other literal indices.
+        if atoms.iter().any(|atom| {
+            atom.proposition.time != goal.proposition.time
+                || atom.args.iter().any(|arg| !matches!(arg, Term::Const(_)))
+        }) {
+            return Err(Error::new(
+                "fourFusion comparison requires constant arguments and one shared proposition time",
+            ));
+        }
+        Ok(Self {
+            facts: facts.to_vec(),
+            clauses,
+            goal: goal.clone(),
+            atoms: atoms.into_iter().collect(),
+        })
+    }
+
+    /// Positive-polarity keys of the ground atoms, in sorted order.
+    pub fn atoms(&self) -> &[Event] {
+        &self.atoms
+    }
+
+    fn is_model(&self, world: &BTreeMap<Event, Value>) -> bool {
+        self.facts.iter().all(|fact| value(fact, world).p)
+            && self.clauses.iter().all(|(_, clause)| {
+                evaluate(&clause.antecedent, world).le(value(&clause.consequent, world))
+            })
+    }
+}
+
+/// The largest program the enumeration accepts: 4^4 = 256 interpretations.
+pub(super) const ENUMERATION_ATOMS: usize = 4;
+
+/// Counts the models among all `4^n` interpretations. The reference oracle,
+/// bounded to [`ENUMERATION_ATOMS`].
+pub(super) fn entailment(program: &GroundProgram) -> Result<FourEntailment, Error> {
+    check_enumerable(program)?;
+    let interpretations = 1 << (2 * program.atoms.len());
     let mut models = 0;
     let mut entailed = true;
     for mask in 0..interpretations {
-        let world = world(&atoms, mask);
-        if experiment.input.iter().all(|fact| value(fact, &world).p)
-            && clauses.iter().all(|clause| {
-                evaluate(&clause.antecedent, &world).le(value(&clause.consequent, &world))
-            })
-        {
+        let world = world(&program.atoms, mask);
+        if program.is_model(&world) {
             models += 1;
-            entailed &= value(&experiment.goal, &world).p;
+            entailed &= value(&program.goal, &world).p;
         }
     }
     Ok(FourEntailment {
@@ -80,53 +153,13 @@ pub(super) fn entailment(experiment: &Experiment, rules: &[Rule]) -> Result<Four
     })
 }
 
-fn prepare(
-    experiment: &Experiment,
-    rules: &[Rule],
-) -> Result<(Vec<Event>, Vec<crate::typed::HornClause>), Error> {
-    let (atoms, clauses) = prepare_ground(experiment, rules)?;
-    if atoms.len() > 4 {
+fn check_enumerable(program: &GroundProgram) -> Result<(), Error> {
+    if program.atoms.len() > ENUMERATION_ATOMS {
         return Err(Error::new(
             "fourFusion fixture comparison supports at most four ground atoms",
         ));
     }
-    Ok((atoms, clauses))
-}
-
-/// The ground, constant and single-time checks of the comparison, without the
-/// bound on the number of atoms that only the enumeration needs.
-fn prepare_ground(
-    experiment: &Experiment,
-    rules: &[Rule],
-) -> Result<(Vec<Event>, Vec<crate::typed::HornClause>), Error> {
-    if rules.iter().any(|rule| !rule.parameters.is_empty()) {
-        return Err(Error::new(
-            "fourFusion fixture comparison requires ground rules",
-        ));
-    }
-    let clauses: Vec<_> = rules.iter().map(horn).collect();
-    let mut atoms: BTreeSet<Event> = experiment
-        .input
-        .iter()
-        .chain([&experiment.goal])
-        .map(key)
-        .collect();
-    for clause in &clauses {
-        collect(&clause.antecedent, &mut atoms);
-        atoms.insert(key(&clause.consequent));
-    }
-    // This finite comparison retains its single-index experimental domain.
-    // The scoped forward matcher itself also supports other literal indices.
-    if atoms.iter().any(|atom| {
-        atom.proposition.time != experiment.goal.proposition.time
-            || atom.args.iter().any(|arg| !matches!(arg, Term::Const(_)))
-    }) {
-        return Err(Error::new(
-            "fourFusion comparison requires constant arguments and one shared proposition time",
-        ));
-    }
-    let atoms: Vec<_> = atoms.into_iter().collect();
-    Ok((atoms, clauses))
+    Ok(())
 }
 
 fn world(atoms: &[Event], mask: usize) -> BTreeMap<Event, Value> {
@@ -147,30 +180,22 @@ fn world(atoms: &[Event], mask: usize) -> BTreeMap<Event, Value> {
 
 /// Test oracle without the four-atom bound: the knowledge meet of every model
 /// found by enumeration, and whether the goal holds in all of them. Atoms in
-/// the order of [`FourLeastModel::atoms`]. Exponential; for small tests only.
+/// the order of [`GroundProgram::atoms`]. Exponential; for small tests only.
 #[cfg(all(test, family_experiments))]
-pub(super) fn meet_of_models(
-    experiment: &Experiment,
-    rules: &[Rule],
-) -> Result<(Vec<(bool, bool)>, bool), Error> {
-    let (atoms, clauses) = prepare_ground(experiment, rules)?;
-    let mut meet = vec![(true, true); atoms.len()];
+pub(super) fn meet_of_models(program: &GroundProgram) -> (Vec<(bool, bool)>, bool) {
+    let mut meet = vec![(true, true); program.atoms.len()];
     let mut entailed = true;
-    for mask in 0..1usize << (2 * atoms.len()) {
-        let world = world(&atoms, mask);
-        if experiment.input.iter().all(|fact| value(fact, &world).p)
-            && clauses.iter().all(|clause| {
-                evaluate(&clause.antecedent, &world).le(value(&clause.consequent, &world))
-            })
-        {
-            for (slot, atom) in meet.iter_mut().zip(&atoms) {
+    for mask in 0..1usize << (2 * program.atoms.len()) {
+        let world = world(&program.atoms, mask);
+        if program.is_model(&world) {
+            for (slot, atom) in meet.iter_mut().zip(&program.atoms) {
                 let value = world[atom];
                 *slot = (slot.0 && value.p, slot.1 && value.n);
             }
-            entailed &= value(&experiment.goal, &world).p;
+            entailed &= value(&program.goal, &world).p;
         }
     }
-    Ok((meet, entailed))
+    (meet, entailed)
 }
 
 /// The knowledge-least model of the premises and rules
@@ -240,17 +265,17 @@ impl Compiler<'_> {
     }
 }
 
-pub fn four_least_model(experiment: &Experiment, rules: &[Rule]) -> Result<FourLeastModel, Error> {
-    let (atoms, rule_clauses) = prepare_ground(experiment, rules)?;
+pub fn four_least_model(program: &GroundProgram) -> FourLeastModel {
+    let atoms = &program.atoms;
     let mut compiler = Compiler {
-        atoms: &atoms,
+        atoms,
         clauses: Vec::new(),
     };
-    for fact in &experiment.input {
+    for fact in &program.facts {
         let head = compiler.bit(fact, true);
         compiler.clauses.push((Vec::new(), head));
     }
-    for clause in &rule_clauses {
+    for (_, clause) in &program.clauses {
         // Forward half of `le`: p(antecedent) => p(consequent); I has p = 1.
         let mut body = Vec::new();
         compiler.p_bits(&clause.antecedent, &mut body);
@@ -260,15 +285,15 @@ pub fn four_least_model(experiment: &Experiment, rules: &[Rule]) -> Result<FourL
         compiler.n_clauses(&clause.antecedent, guard);
     }
     let bits = propagate(2 * atoms.len(), &mut compiler.clauses);
-    let goal = compiler.bit(&experiment.goal, true);
-    Ok(FourLeastModel {
+    let goal = compiler.bit(&program.goal, true);
+    FourLeastModel {
         values: (0..atoms.len())
             .map(|i| (bits[2 * i], bits[2 * i + 1]))
             .collect(),
         clauses: compiler.clauses.len(),
         entailed: bits[goal],
-        atoms,
-    })
+        atoms: atoms.clone(),
+    }
 }
 
 /// Least model of definite Horn clauses by counter-based unit propagation,
@@ -318,10 +343,7 @@ pub struct FourStep {
 
 #[derive(Debug, Clone)]
 pub struct FourSession {
-    experiment: Experiment,
-    rules: Vec<Rule>,
-    atoms: Vec<Event>,
-    clauses: Vec<crate::typed::HornClause>,
+    program: GroundProgram,
     remaining: Vec<usize>,
     cursor: usize,
     round: usize,
@@ -329,13 +351,13 @@ pub struct FourSession {
 }
 impl FourSession {
     pub fn new(experiment: &Experiment, rules: &[Rule]) -> Result<Self, Error> {
-        let (atoms, clauses) = prepare(experiment, rules)?;
-        let remaining = (0..1 << (2 * atoms.len())).collect();
+        Self::from_program(GroundProgram::from_ground_rules(experiment, rules)?)
+    }
+    pub fn from_program(program: GroundProgram) -> Result<Self, Error> {
+        check_enumerable(&program)?;
+        let remaining = (0..1 << (2 * program.atoms.len())).collect();
         Ok(Self {
-            experiment: experiment.clone(),
-            rules: rules.to_vec(),
-            atoms,
-            clauses,
+            program,
             remaining,
             cursor: 0,
             round: 0,
@@ -343,31 +365,33 @@ impl FourSession {
         })
     }
     pub fn atoms(&self) -> &[Event] {
-        &self.atoms
+        &self.program.atoms
     }
     pub fn result(&self) -> Option<&FourEntailment> {
         self.result.as_ref()
     }
     pub fn step(&mut self) -> FourStep {
+        let program = &self.program;
         let mut eliminated = Vec::new();
         let mut constraint = None;
-        let facts = self.experiment.input.len();
-        if self.cursor < facts + self.clauses.len() {
+        let facts = program.facts.len();
+        let constraints = facts + program.clauses.len();
+        if self.cursor < constraints {
             constraint = Some(if self.cursor < facts {
                 format!(
                     "premise {}",
-                    super::render_event(&self.experiment.input[self.cursor])
+                    super::render_event(&program.facts[self.cursor])
                 )
             } else {
-                format!("rule {}", self.rules[self.cursor - facts].name)
+                format!("rule {}", program.clauses[self.cursor - facts].0)
             });
             let mut next = Vec::new();
             for mask in &self.remaining {
-                let world = world(&self.atoms, *mask);
+                let world = world(&program.atoms, *mask);
                 let satisfies = if self.cursor < facts {
-                    value(&self.experiment.input[self.cursor], &world).p
+                    value(&program.facts[self.cursor], &world).p
                 } else {
-                    let clause = &self.clauses[self.cursor - facts];
+                    let clause = &program.clauses[self.cursor - facts].1;
                     evaluate(&clause.antecedent, &world).le(value(&clause.consequent, &world))
                 };
                 if satisfies {
@@ -379,14 +403,15 @@ impl FourSession {
             self.remaining = next;
             self.cursor += 1;
         }
-        let complete = self.cursor == facts + self.clauses.len();
+        let complete = self.cursor == constraints;
+        let interpretations = 1 << (2 * program.atoms.len());
         if complete {
             let entailed = self
                 .remaining
                 .iter()
-                .all(|mask| value(&self.experiment.goal, &world(&self.atoms, *mask)).p);
+                .all(|mask| value(&program.goal, &world(&program.atoms, *mask)).p);
             self.result = Some(FourEntailment {
-                interpretations: 1 << (2 * self.atoms.len()),
+                interpretations,
                 models: self.remaining.len(),
                 entailed,
             });
@@ -397,7 +422,7 @@ impl FourSession {
             constraint,
             eliminated,
             surviving: self.remaining.clone(),
-            interpretations: 1 << (2 * self.atoms.len()),
+            interpretations,
             entailed: self.result.as_ref().map(|r| r.entailed),
             complete,
         }

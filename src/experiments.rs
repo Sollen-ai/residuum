@@ -17,7 +17,7 @@ mod default_selection;
 mod default_steps;
 pub use default_steps::{DefaultPhase, DefaultSession, DefaultStep};
 mod four;
-pub use four::{FourLeastModel, FourSession, FourStep, four_least_model};
+pub use four::{FourLeastModel, FourSession, FourStep, GroundProgram, four_least_model};
 mod incremental;
 
 pub use default_selection::{DefaultExperimentResult, run_default_experiments};
@@ -137,7 +137,12 @@ pub fn run_experiments(module: &Module) -> Result<Vec<ExperimentResult>, Error> 
             }
             ExperimentQueryKind::FourFusion => {
                 // Check the finite ground universe before calling close.
-                (None, Some(four::entailment(experiment, &rules)?))
+                (
+                    None,
+                    Some(four::entailment(&GroundProgram::from_ground_rules(
+                        experiment, &rules,
+                    )?)?),
+                )
             }
         };
         let closure = close(experiment.input.clone(), &rules, &mut Clock::default());

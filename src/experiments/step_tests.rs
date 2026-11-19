@@ -36,7 +36,10 @@ fn four_steps_filter_models_and_final_result_matches_fusion_counterexample() {
     assert!(second.complete);
     assert_eq!(second.entailed, Some(true));
     assert_eq!(second.surviving.len(), 3);
-    assert_eq!(s.result().unwrap(), &four::entailment(e, &r).unwrap());
+    assert_eq!(
+        s.result().unwrap(),
+        &four::entailment(&GroundProgram::from_ground_rules(e, &r).unwrap()).unwrap()
+    );
     let rejected: BTreeSet<_> = first
         .eliminated
         .iter()
@@ -51,7 +54,10 @@ fn four_steps_filter_models_and_final_result_matches_fusion_counterexample() {
     reverse.reverse();
     let mut s = FourSession::new(e, &reverse).unwrap();
     s.trace(10);
-    assert_eq!(s.result().unwrap(), &four::entailment(e, &r).unwrap());
+    assert_eq!(
+        s.result().unwrap(),
+        &four::entailment(&GroundProgram::from_ground_rules(e, &r).unwrap()).unwrap()
+    );
 }
 
 #[test]

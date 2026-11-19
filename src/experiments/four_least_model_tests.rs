@@ -49,31 +49,28 @@ fn least_model_matches_enumeration_on_every_four_fixture() {
             if experiment.query_kind != ExperimentQueryKind::FourFusion {
                 continue;
             }
-            let least = four_least_model(experiment, &rules);
-            match entailment(experiment, &rules) {
+            let program = match GroundProgram::from_ground_rules(experiment, &rules) {
+                Ok(program) => program,
+                Err(error) => {
+                    *rejected.entry(error.to_string()).or_default() += 1;
+                    continue;
+                }
+            };
+            let least = four_least_model(&program);
+            match entailment(&program) {
                 Ok(oracle) => {
-                    let least = least.unwrap();
                     assert_eq!(
                         least.entailed, oracle.entailed,
                         "{path} {}",
                         experiment.name
                     );
-                    let (meet, _) = meet_of_models(experiment, &rules).unwrap();
+                    let (meet, _) = meet_of_models(&program);
                     assert_eq!(least.values, meet, "{path} {}", experiment.name);
                     compared += 1;
                 }
-                Err(error) if error.to_string().contains("at most four") => {
-                    least.unwrap();
-                    beyond_enumeration += 1;
-                }
                 Err(error) => {
-                    *rejected.entry(error.to_string()).or_default() += 1;
-                    assert_eq!(
-                        least.unwrap_err().to_string(),
-                        error.to_string(),
-                        "{path} {}",
-                        experiment.name
-                    );
+                    assert!(error.to_string().contains("at most four"), "{error}");
+                    beyond_enumeration += 1;
                 }
             }
         }
@@ -109,7 +106,8 @@ fn least_model_of_the_contraposition_counterexample() {
     else {
         panic!("experiment");
     };
-    let least = four_least_model(experiment, &rules_of(&module)).unwrap();
+    let program = GroundProgram::from_ground_rules(experiment, &rules_of(&module)).unwrap();
+    let least = four_least_model(&program);
     // Premise ~Q gives n(Q); P <= Q carries n back to P. Nothing gives p.
     assert_eq!(least.values, vec![(false, true), (false, true)]);
     assert!(least.entailed);
@@ -135,13 +133,14 @@ fn least_model_lifts_the_four_atom_bound() {
             _ => None,
         })
         .unwrap();
+    let program = GroundProgram::from_ground_rules(chain, &rules).unwrap();
     assert!(
-        entailment(chain, &rules)
+        entailment(&program)
             .unwrap_err()
             .to_string()
             .contains("at most four")
     );
-    let least = four_least_model(chain, &rules).unwrap();
+    let least = four_least_model(&program);
     assert_eq!(least.atoms.len(), 6);
     // Premise, then a forward and a backward clause for each of the five rules.
     assert_eq!(least.clauses, 11);
@@ -231,10 +230,11 @@ fn least_model_matches_enumeration_on_random_ground_programs() {
                 rule
             })
             .collect();
-        let oracle = entailment(&experiment, &rules).unwrap();
-        let least = four_least_model(&experiment, &rules).unwrap();
+        let program = GroundProgram::from_ground_rules(&experiment, &rules).unwrap();
+        let oracle = entailment(&program).unwrap();
+        let least = four_least_model(&program);
         assert_eq!(least.entailed, oracle.entailed, "trial {trial}: {rules:?}");
-        let (meet, _) = meet_of_models(&experiment, &rules).unwrap();
+        let (meet, _) = meet_of_models(&program);
         assert_eq!(least.values, meet, "trial {trial}: {rules:?}");
         if oracle.entailed {
             entailed += 1;
@@ -294,8 +294,9 @@ fn least_model_equals_the_meet_of_models_beyond_four_atoms() {
                 rule
             })
             .collect();
-        let least = four_least_model(&experiment, &rules).unwrap();
-        let (meet, oracle) = meet_of_models(&experiment, &rules).unwrap();
+        let program = GroundProgram::from_ground_rules(&experiment, &rules).unwrap();
+        let least = four_least_model(&program);
+        let (meet, oracle) = meet_of_models(&program);
         assert_eq!(least.values, meet, "trial {trial}: {rules:?}");
         assert_eq!(least.entailed, oracle, "trial {trial}: {rules:?}");
         if least.atoms.len() > 4 {
