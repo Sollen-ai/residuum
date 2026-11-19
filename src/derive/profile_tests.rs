@@ -460,7 +460,10 @@ fn depth_first_delta_join_keeps_batch_updates_and_temporal_boundaries() {
     assert!(multiple >= 9, "{multiple}");
     // Some match had a frontier witness before its pivot, so the exclusion
     // that keeps each match once was exercised by the depth-first join.
-    assert!(exclusions > 0, "no frontier event was excluded before a pivot");
+    assert!(
+        exclusions > 0,
+        "no frontier event was excluded before a pivot"
+    );
 }
 
 #[test]
