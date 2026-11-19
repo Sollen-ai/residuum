@@ -160,10 +160,16 @@ eventos con identificadores estables.
 anchura de `match_antecedents_in` y `match_delta_antecedents` por una búsqueda
 en profundidad con un solo mapa de bindings y testigos como referencias a
 Known, clonados sólo al completar un match. Un intento de `match_event` se
-deshace quitando los binders que no estaban; basta porque todo valor del mapa
-es canónico (`bind_typed` sólo inserta valores canónicos y los mapas iniciales
-se construyen con él), así que reescribir un binder presente deja el mismo
-valor. Recorrer los átomos en orden y los candidatos en orden de Known da los
+deshace quitando los binders que no estaban. Basta porque `bind_typed` sólo
+inserta valores canónicos y, ante un binder presente, reescribe la forma
+canónica de un valor igual: para los valores puestos durante el join es el
+mismo valor. Un valor inicial puede no serlo (las ligaduras de activación se
+canonizan con los tipos de parámetro de la fuente del Program, no de la
+regla); entonces sólo un binder `PropositionTime` puede cambiar de
+representación, de término a tiempo igual, y ese cambio sobrevive al deshacer.
+No es observable: todo match completo liga todos los binders, así que la
+salida lleva la forma canónica de todos modos, y el índice de argumentos sólo
+lee parámetros no temporales, cuya forma canónica es el propio valor. Recorrer los átomos en orden y los candidatos en orden de Known da los
 matches en el mismo orden lexicográfico que el join en anchura. Los joins
 anteriores quedan como referencia de test (`profile::reference_join`).
 
@@ -174,7 +180,13 @@ Verificación: `depth_first_join_matches_copying_join_with_identical_provenance`
 (`Debug` idéntico en `partialProduct` y los mismos contadores, incluidos
 sondeos y rechazos) y `depth_first_delta_join_keeps_incremental_updates`
 (deltas y cierres de `IncrementalClosure` e `IncrementalProgramClosure` en tres
-escenarios), además de 89 tests existentes de incremental, residual, regresión
+escenarios, una semilla por actualización);
+`depth_first_delta_join_keeps_batch_updates_and_temporal_boundaries` (lotes de
+varios eventos, de modo que un match tenga varios testigos en la frontera y se
+use la exclusión antes del pivote, en cuatro fixtures base/delta, incluida
+`dynamic_incremental_temporal_boundary.res`, y en los productos en uno y dos
+lotes); y el barrido de todas las fixtures de `known_index_tests.rs`, que
+compara también con el join de referencia. Además, 89 tests existentes de incremental, residual, regresión
 monótona y Peano, ejecutados individualmente. `matching_ms` en `partialProduct`,
 build de tests sin optimizar, dos corridas: 566 → 382 y 596 → 486.
 
