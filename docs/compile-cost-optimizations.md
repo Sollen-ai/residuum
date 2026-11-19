@@ -191,9 +191,10 @@ CLI sin features 708, `test-core` 482, `test-legal-geometry` 624,
 `test-legal-learning` 594. Tests activos tras la integración: biblioteca 314
 (`test-core` 167, `test-residual` 240, `test-experiments` 241); CLI 195
 (`test-core` 122, `test-legal-geometry` 174, `test-legal-learning` 143). La
-biblioteca sin features queda a 45 MiB del freno
-de 768, y una recompilación incremental de `test-experiments` llegó a 763; la
-ruta de trabajo segura es compilar por familias. En la misma sesión, una
+biblioteca sin features quedaba a 45 MiB del freno
+de 768 entonces vigente, y una recompilación incremental de `test-experiments`
+llegó a 763. Por eso se subieron los límites 300 MiB (freno 1068); con ellos
+compilan también las dos compilaciones sin features (biblioteca 588, CLI 761). En la misma sesión, una
 compilación incremental de la CLI sin features se detuvo por
 `near_memory_limit` (770 MiB), el mismo fallo intermitente que se describe
 arriba.
