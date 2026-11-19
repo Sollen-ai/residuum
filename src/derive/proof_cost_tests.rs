@@ -95,7 +95,9 @@ fn reference(
 }
 
 fn size(derived: &DerivedEvent, witnesses: &[u64]) -> u64 {
-    witnesses.iter().sum::<u64>() + weight(derived)
+    witnesses
+        .iter()
+        .fold(weight(derived), |total, cost| total.saturating_add(*cost))
 }
 /// A non-uniform weight, so ties and sums are not all equal by construction.
 fn weight(derived: &DerivedEvent) -> u64 {
@@ -214,4 +216,132 @@ fn kleene_stages_equal_rounds_of_the_synchronous_iteration() {
         }
     }
     assert!(compared > 100, "{compared}");
+}
+
+/// The cases of `proof_costs_equal_relaxation_on_products_and_cycles`.
+fn cases() -> Vec<(String, Closure, Vec<Event>)> {
+    let product = load("peano_polynomial_product_scenario.res");
+    let cycles = load("discrete_derivative.res");
+    let mut cases = Vec::new();
+    for name in ["unitProduct", "partialProduct"] {
+        let seeds = input(&product, name);
+        let closure =
+            close_program_reference(seeds.clone(), &product, &mut Clock::default()).unwrap();
+        cases.push((name.to_string(), closure, seeds));
+    }
+    let events = input(&cycles, "universe");
+    for mask in 0..(1 << events.len()) {
+        let seeds: Vec<Event> = events
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| mask & (1 << i) != 0)
+            .map(|(_, e)| e.clone())
+            .collect();
+        let closure = close(seeds.clone(), &rules(&cycles), &mut Clock::default());
+        cases.push((format!("cycles mask {mask}"), closure, seeds));
+    }
+    cases
+}
+
+/// Following reported justifications from any event reaches only seeds:
+/// the graph event → witness of an optimal justification has no cycle.
+fn assert_well_founded(name: &str, closure: &Closure, costs: &ProofCosts) {
+    fn visit(
+        event: usize,
+        closure: &Closure,
+        costs: &ProofCosts,
+        state: &mut [u8],
+        name: &str,
+    ) {
+        match state[event] {
+            2 => return,
+            1 => panic!("{name}: cyclic optimal proof through {:?}", closure.known[event]),
+            _ => {}
+        }
+        state[event] = 1;
+        for &j in &costs.optimal[event] {
+            for witness in &closure.derivations[j].record.antecedents {
+                let w = closure.known.iter().position(|k| k == witness).unwrap();
+                visit(w, closure, costs, state, name);
+            }
+        }
+        state[event] = 2;
+    }
+    let mut state = vec![0u8; closure.known.len()];
+    for event in 0..closure.known.len() {
+        visit(event, closure, costs, &mut state, name);
+    }
+}
+
+#[test]
+fn zero_weights_keep_costs_and_report_only_well_founded_proofs() {
+    let mut dropped = 0;
+    for (name, closure, seeds) in cases() {
+        let zero = minimum_proof_sizes(&closure, &seeds, |_| 0);
+        let expected = reference(&closure, &seeds, |_, w| w.iter().sum());
+        assert_eq!(zero.costs, expected.costs, "{name}");
+        for (i, optimal) in zero.optimal.iter().enumerate() {
+            assert!(
+                optimal.iter().all(|j| expected.optimal[i].contains(j)),
+                "{name}: reported a justification that does not attain the cost"
+            );
+            let is_seed = seeds.contains(&closure.known[i]);
+            assert_eq!(
+                optimal.is_empty(),
+                is_seed || zero.costs[i].is_none(),
+                "{name} {:?}",
+                closure.known[i]
+            );
+            dropped += expected.optimal[i].len() - optimal.len();
+        }
+        assert_well_founded(&name, &closure, &zero);
+        // Positive weights drop nothing, and are well-founded as well.
+        let unit = minimum_proof_sizes(&closure, &seeds, |_| 1);
+        assert_well_founded(&name, &closure, &unit);
+        assert_well_founded(&name, &closure, &kleene_stages(&closure, &seeds));
+    }
+    assert!(dropped > 0, "no cyclic zero-cost justification was exercised");
+}
+
+#[test]
+fn events_without_proof_and_foreign_seeds() {
+    // Closed from the whole universe, costed from a subset: the other
+    // universe events and what depends only on them have no proof.
+    let cycles = load("discrete_derivative.res");
+    let universe = input(&cycles, "universe");
+    let closure = close(universe.clone(), &rules(&cycles), &mut Clock::default());
+    let seeds = vec![universe[0].clone()];
+    let sizes = minimum_proof_sizes(&closure, &seeds, |_| 1);
+    assert_eq!(sizes, reference(&closure, &seeds, |_, w| 1 + w.iter().sum::<u64>()));
+    let unproved: Vec<usize> = (0..closure.known.len())
+        .filter(|&i| sizes.costs[i].is_none())
+        .collect();
+    assert!(!unproved.is_empty());
+    assert!(unproved.iter().all(|&i| sizes.optimal[i].is_empty()));
+    assert_eq!(sizes.cost(&closure, &universe[0]), Some(0));
+    // A seed that is not in Known changes nothing.
+    let mut foreign = seeds.clone();
+    let mut outside = universe[0].clone();
+    outside.verb = "notInTheClosure".to_string();
+    assert!(!closure.known.contains(&outside));
+    foreign.push(outside.clone());
+    assert_eq!(minimum_proof_sizes(&closure, &foreign, |_| 1), sizes);
+    assert_eq!(kleene_stages(&closure, &foreign), kleene_stages(&closure, &seeds));
+    assert_eq!(sizes.cost(&closure, &outside), None);
+}
+
+#[test]
+fn saturated_sizes_tie_at_the_maximum_without_overflow() {
+    for (name, closure, seeds) in cases() {
+        let sizes = minimum_proof_sizes(&closure, &seeds, |_| u64::MAX);
+        for (i, event) in closure.known.iter().enumerate() {
+            if seeds.contains(event) {
+                assert_eq!(sizes.costs[i], Some(0), "{name}");
+                continue;
+            }
+            assert_eq!(sizes.costs[i], Some(u64::MAX), "{name} {event:?}");
+            assert!(!sizes.optimal[i].is_empty(), "{name} {event:?}");
+        }
+        assert_well_founded(&name, &closure, &sizes);
+    }
 }

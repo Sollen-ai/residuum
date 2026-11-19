@@ -13,7 +13,16 @@
 //! Both combinations are at least the largest witness value, so Knuth's (1977)
 //! generalization of Dijkstra to hypergraphs fixes each event once, in
 //! increasing order, also with cycles. Ties are kept: every justification that
-//! attains the minimum is reported, in the order of `closure.derivations`.
+//! attains the minimum is reported, in the order of `closure.derivations`,
+//! provided all its witnesses were fixed before its head. Following any
+//! reported justification therefore always ends at seeds. With weights of at
+//! least 1 this excludes nothing (every witness costs strictly less than the
+//! head); with weight 0 it drops cost-attaining justifications that would close
+//! a cycle, such as P ← Q ← P at cost 0.
+//!
+//! Sizes saturate: a cost of `u64::MAX` means "at least `u64::MAX`", and all
+//! saturated justifications of an event tie. Tree size counts a shared
+//! subproof once per use, so it can grow exponentially with the depth.
 use crate::typed::{Closure, DerivedEvent, Event};
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BinaryHeap};
@@ -23,7 +32,9 @@ pub struct ProofCosts {
     /// Aligned with `closure.known`. `None` when no proof from the seeds exists.
     pub costs: Vec<Option<u64>>,
     /// Aligned with `closure.known`: indexes into `closure.derivations` of the
-    /// justifications attaining the cost. Empty for seeds.
+    /// justifications attaining the cost whose witnesses were all fixed
+    /// before the event (see the module note). Empty for seeds and for events
+    /// without a proof; non-empty for every other event with a cost.
     pub optimal: Vec<Vec<usize>>,
 }
 
@@ -35,7 +46,7 @@ impl ProofCosts {
 }
 
 /// Size of the smallest proof tree of each event, with `weight` per
-/// justification (for instance 1 for every rule).
+/// justification (for instance 1 for every rule). Sums saturate at `u64::MAX`.
 pub fn minimum_proof_sizes(
     closure: &Closure,
     seeds: &[Event],
@@ -52,7 +63,12 @@ pub fn minimum_proof_sizes(
 /// its justifications of the stages of their witnesses.
 pub fn kleene_stages(closure: &Closure, seeds: &[Event]) -> ProofCosts {
     least(closure, seeds, |_, witnesses| {
-        1 + witnesses.iter().copied().max().unwrap_or(0)
+        witnesses
+            .iter()
+            .copied()
+            .max()
+            .unwrap_or(0)
+            .saturating_add(1)
     })
 }
 
@@ -109,7 +125,9 @@ fn least(
     }
 
     let mut best: Vec<Option<u64>> = vec![None; events];
-    let mut fixed = vec![false; events];
+    // Order in which each event was fixed; `None` while unfixed.
+    let mut fixed: Vec<Option<usize>> = vec![None; events];
+    let mut fixes = 0;
     let mut seed = vec![false; events];
     let mut queue = Queue::new();
     for event in seeds {
@@ -133,15 +151,16 @@ fn least(
         }
     }
     while let Some(Reverse((cost, event))) = queue.pop() {
-        if fixed[event] || best[event] != Some(cost) {
+        if fixed[event].is_some() || best[event] != Some(cost) {
             continue;
         }
-        fixed[event] = true;
+        fixed[event] = Some(fixes);
+        fixes += 1;
         for &j in &watchers[event] {
             missing[j] -= 1;
             if missing[j] == 0 {
                 let head = heads[j].expect("valid justification");
-                if !fixed[head] {
+                if fixed[head].is_none() {
                     let cost = value(j, &best);
                     relax(head, cost, &mut best, &mut queue);
                 }
@@ -153,6 +172,10 @@ fn least(
     for j in 0..closure.derivations.len() {
         let Some(head) = heads[j] else { continue };
         if seed[head] || missing[j] != 0 {
+            continue;
+        }
+        // Every witness fixed strictly before the head: well-founded choice.
+        if witnesses[j].iter().any(|&a| fixed[a] >= fixed[head]) {
             continue;
         }
         if Some(value(j, &best)) == best[head] {
