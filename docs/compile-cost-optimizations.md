@@ -188,7 +188,10 @@ Tras integrar las optimizaciones semi-naive (rama `integration/optimizations`,
 los valores por defecto del runner, desde cero, fueron: biblioteca sin
 features 723, `test-core` 539, `test-residual` 632, `test-experiments` 653;
 CLI sin features 708, `test-core` 482, `test-legal-geometry` 624,
-`test-legal-learning` 594. La biblioteca sin features queda a 45 MiB del freno
+`test-legal-learning` 594. Tests activos tras la integración: biblioteca 314
+(`test-core` 167, `test-residual` 240, `test-experiments` 241); CLI 195
+(`test-core` 122, `test-legal-geometry` 174, `test-legal-learning` 143). La
+biblioteca sin features queda a 45 MiB del freno
 de 768, y una recompilación incremental de `test-experiments` llegó a 763; la
 ruta de trabajo segura es compilar por familias. En la misma sesión, una
 compilación incremental de la CLI sin features se detuvo por

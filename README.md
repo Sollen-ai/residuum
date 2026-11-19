@@ -124,8 +124,8 @@ forward de programas asociados. El expediente Legal se observa con `run` y
 fragmento de búsqueda residual existente, y `query` conserva ese error.
 
 El ejecutable `residuum` en la raíz es el launcher seguro. Compila incrementalmente
-y ejecuta el worker mediante `scripts/test_safe.py`: 1 GiB total, sin swap, timeout
-de 45 s para compilación y 15 s para ejecución; se detiene al llegar a 768 MiB o
+y ejecuta el worker mediante `scripts/test_safe.py`: 1324 MiB total, sin swap, timeout
+de 45 s para compilación y 15 s para ejecución; se detiene al llegar a 1068 MiB o
 detectar crecimiento anormal. Requiere Linux/cgroup v2 y systemd de usuario y falla
 si no puede imponer los límites. El worker Rust comprueba RAM/swap antes de leer
 el archivo. La salida del programa va a stdout y los diagnósticos a stderr.
@@ -1485,10 +1485,10 @@ python3 scripts/test_safe.py --test tests::close_uses_beta_reduced_delivery_rule
 
 El runner requiere Linux, cgroup v2 y una sesión de systemd del usuario. Compila
 sin ejecutar tests, con un trabajo de Cargo y timeout de 45 segundos. Después
-ejecuta cada test seleccionado en un proceso y cgroup separados, con 1 GiB total,
+ejecuta cada test seleccionado en un proceso y cgroup separados, con 1324 MiB total,
 sin swap, un hilo del harness y timeout de 15 segundos.
 
-Se detiene ante un fallo, timeout, consumo de 768 MiB o crecimiento de al menos
+Se detiene ante un fallo, timeout, consumo de 1068 MiB o crecimiento de al menos
 64 MiB en un segundo cuando el test supera 128 MiB. Si no puede imponer los
 límites, retorna error sin compilar ni ejecutar el binario. Los registros de exit
 status, tiempo y pico RSS quedan en `target/test-diagnostics/`.

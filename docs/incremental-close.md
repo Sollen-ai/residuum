@@ -38,7 +38,12 @@ No se exige igualdad de orden de descubrimiento ni de DerivationTime con una
 recomputación independiente. Sí se comparan los conjuntos lógicos y las parejas
 (evento, DerivationRecord). Las estadísticas cuentan rondas, reglas examinadas,
 pivotes compatibles en el delta y matches completos, sin prometer una mejora de
-tiempo para todos los programas. El matcher existente se reutiliza sin cambios.
+tiempo para todos los programas. Desde el 2026-11-18 «reglas examinadas» cuenta
+sólo las reglas con algún encabezado de átomo presente en la frontera de la
+ronda, y el matcher usa el índice por argumentos y el join en profundidad; los
+resultados, su orden y sus estampas no cambian
+([semi-naive-pending-optimizations.md](semi-naive-pending-optimizations.md) §1,
+§2 y §5).
 
 ## Experimento desde un archivo Formal
 
