@@ -58,7 +58,7 @@ impl IncrementalProgramClosure {
                 derivations: Vec::new(),
             },
             known_keys: BTreeSet::new(),
-            index: KnownIndex::default(),
+            index: KnownIndex::with_arguments(&[]),
             seen: BTreeSet::new(),
         };
         let mut delta = ProgramClosureDelta::default();
@@ -352,7 +352,7 @@ mod tests {
             programs,
             active: vec![],
             known_keys: stored.known.iter().cloned().collect(),
-            index: KnownIndex::new(&stored.known),
+            index: KnownIndex::with_arguments(&stored.known),
             seen: stored
                 .derivations
                 .iter()

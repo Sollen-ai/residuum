@@ -21,6 +21,8 @@ pub struct ForwardSession {
     rules: Vec<Rule>,
     programs: Vec<ProgramSource>,
     closure: Closure,
+    /// Argument index over `closure.known`, extended as rounds add events.
+    index: KnownIndex,
     seen: BTreeSet<UnstampedDerivation>,
     round: usize,
     complete: bool,
@@ -36,13 +38,15 @@ impl ForwardSession {
     }
     fn from_parts(seeds: Vec<Event>, rules: Vec<Rule>, programs: Vec<ProgramSource>) -> Self {
         let mut keys = BTreeSet::new();
-        let known = seeds
+        let known: Vec<Event> = seeds
             .into_iter()
             .filter(|e| keys.insert(e.clone()))
             .collect();
+        let index = KnownIndex::with_arguments(&known);
         Self {
             rules,
             programs,
+            index,
             closure: Closure {
                 known,
                 derivations: Vec::new(),
@@ -59,11 +63,22 @@ impl ForwardSession {
         self.complete
     }
 
+    /// Appends to Known and its index together; the only way Known grows.
+    fn push_known(&mut self, event: Event) {
+        self.index.insert(self.closure.known.len(), &event);
+        self.closure.known.push(event);
+    }
+
     pub fn step(&mut self, clock: &mut dyn DerivationClock) -> ForwardStep {
-        let index = KnownIndex::new(&self.closure.known);
         let view = KnownView {
             events: &self.closure.known,
-            index: Some(&index),
+            index: Some(&self.index),
+        };
+        #[cfg(test)]
+        let view = if profile::scan_known() {
+            KnownView::linear(&self.closure.known)
+        } else {
+            view
         };
         let mut witnesses = Vec::new();
         for rule in &self.rules {
@@ -111,7 +126,9 @@ impl ForwardSession {
                 derivations.push(derived);
             }
         }
-        self.closure.known.extend(added.iter().cloned());
+        for event in &added {
+            self.push_known(event.clone());
+        }
         self.closure.derivations.extend(derivations.iter().cloned());
         self.round += 1;
         self.complete = added.is_empty();
@@ -163,6 +180,7 @@ impl DerivativeSession {
     pub(super) fn from_closed(closure: &Closure, rules: &[Rule], additions: Vec<Event>) -> Self {
         let mut forward = ForwardSession::new(closure.known.clone(), rules);
         forward.closure = closure.clone();
+        forward.index = KnownIndex::with_arguments(&forward.closure.known);
         forward.seen = closure
             .derivations
             .iter()
@@ -193,7 +211,9 @@ impl DerivativeSession {
                 .filter(|e| keys.insert((*e).clone()))
                 .cloned()
                 .collect();
-            self.forward.closure.known.extend(added.iter().cloned());
+            for event in &added {
+                self.forward.push_known(event.clone());
+            }
             let complete = added.is_empty();
             (added, Vec::new(), complete)
         } else {

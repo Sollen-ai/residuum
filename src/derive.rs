@@ -4,9 +4,12 @@ use std::collections::{BTreeMap, BTreeSet};
 mod incremental;
 mod steps;
 pub use steps::{DerivativeSession, DerivativeStep, ForwardSession, ForwardStep};
+mod join;
 mod known_index;
 mod program_incremental;
 use known_index::{KnownIndex, KnownView};
+#[cfg(test)]
+mod known_index_tests;
 #[cfg(test)]
 mod profile;
 #[cfg(test)]
@@ -392,7 +395,7 @@ fn close_with_programs(
         .into_iter()
         .filter(|event| known_keys.insert(event.clone()))
         .collect();
-    let mut known_index = KnownIndex::new(&known);
+    let mut known_index = KnownIndex::with_arguments(&known);
     let mut frontier = known.clone();
     let mut derivations = Vec::new();
     let mut seen_unstamped = BTreeSet::new();
@@ -542,13 +545,36 @@ fn match_antecedents_in(
     substitutions: BTreeMap<String, SubstitutionValue>,
     antecedents: Vec<Event>,
 ) -> Vec<AntecedentMatch> {
+    #[cfg(test)]
+    if profile::copying_join() {
+        return match_antecedents_copying(
+            antecedent,
+            known,
+            parameters,
+            substitutions,
+            antecedents,
+        );
+    }
+    join::match_antecedents(antecedent, known, parameters, substitutions, antecedents)
+}
+
+/// The recursive join that `join::match_antecedents` replaced, kept as the
+/// reference it is compared with.
+#[cfg(test)]
+fn match_antecedents_copying(
+    antecedent: &Antecedent,
+    known: KnownView<'_>,
+    parameters: &[Arg],
+    substitutions: BTreeMap<String, SubstitutionValue>,
+    antecedents: Vec<Event>,
+) -> Vec<AntecedentMatch> {
     match antecedent {
         Antecedent::Unit => vec![AntecedentMatch {
             antecedents,
             substitutions,
         }],
         Antecedent::Event(pattern) => known
-            .candidates(pattern)
+            .candidates_bound(pattern, parameters, &substitutions)
             .filter_map(|event| {
                 let mut substitutions = substitutions.clone();
                 match_event(pattern, event, parameters, &mut substitutions)?;
@@ -561,10 +587,10 @@ fn match_antecedents_in(
             })
             .collect(),
         Antecedent::And(left, right) => {
-            match_antecedents_in(left, known, parameters, substitutions, antecedents)
+            match_antecedents_copying(left, known, parameters, substitutions, antecedents)
                 .into_iter()
                 .flat_map(|matched| {
-                    match_antecedents_in(
+                    match_antecedents_copying(
                         right,
                         known,
                         parameters,

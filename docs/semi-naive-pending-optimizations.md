@@ -16,11 +16,11 @@ de rondas y `PropositionTime` ([discrete-derivative.md](discrete-derivative.md) 
 
 | # | Optimización | Impacto estimado | Riesgo | Toca |
 |---:|---|---|---|---|
-| 1 | Índice por argumentos ya ligados | Alto | Medio | `known_index.rs`, matching |
+| 1 | Índice por argumentos ya ligados | Alto | Medio | `known_index.rs`, matching — **aplicada** |
 | 2 | Mapa verbo → reglas relevantes | Medio | Bajo | `incremental.rs`, `program_incremental.rs` |
 | 3 | Orden de uniones por selectividad | Medio | Medio | `match_delta_antecedents` |
 | 4 | Evaluación por componentes de dependencia | Medio | Medio | schedulers de cierre |
-| 5 | Menos copias en el join | Medio (constante) | Bajo | matching |
+| 5 | Menos copias en el join | Medio (constante) | Bajo | matching — **aplicada** en parte |
 | 6 | Rondas con instantánea de Known | Bajo–medio | Medio | `update`, `drain` |
 | 7 | Explicación bajo demanda | Alto en memoria | Alto (contrato) | `Closure`, `explain` |
 | 8 | Procedencia en semianillos | Nueva capacidad | Alto (diseño) | capa de consulta |
@@ -52,6 +52,41 @@ temporales) siguen por el camino actual.
 **Verificar.** Comparar indexado contra `profile::linear_scan()` como en
 `indexed_known_matches_linear_product_with_identical_provenance`: misma
 igualdad `Debug` de cierres y mismos conteos salvo `probes` y `header_rejects`.
+
+**Aplicado (2026-11-18).** `KnownIndex::with_arguments` añade a cada cubeta
+de encabezado un mapa por posición de argumento, de término ground exacto a
+posiciones ascendentes en Known; se construye de forma ansiosa, no perezosa.
+Lo usan los Known de nivel de cierre (`close`, `IncrementalClosure`,
+`IncrementalProgramClosure`, `ForwardSession`); las fronteras siguen con el
+índice de encabezado. `ForwardSession` conserva su índice entre pasos y lo
+extiende con los eventos añadidos, en lugar de reconstruirlo en cada paso. `KnownView::candidates_bound` elige, entre las
+posiciones fijadas, la de menos posiciones: una constante o `None`, o un
+parámetro de tipo no temporal ya ligado a un término ground. Para esos casos
+`bind_term` sólo acepta igualdad exacta, así que el filtro no pierde ningún
+candidato y conserva el orden de Known. Los parámetros de tipo
+`PropositionTime`, los constructores y los records siguen el camino de
+encabezado, porque su comparación canónica no es igualdad sintáctica.
+
+Verificación: `argument_index_matches_linear_product_with_identical_provenance`
+(`Debug` idéntico al barrido lineal en `partialProduct`, mismos contadores
+salvo sondeos, y cada sondeo ahorrado era un rechazo estructural) y
+`argument_index_keeps_incremental_updates_equal_to_linear_scan`. El test
+anterior del índice de encabezado se conserva con `profile::header_only_index`.
+`src/derive/known_index_tests.rs` añade dos comparaciones. Una aleatoria, con
+semilla fija: `candidates_bound` contiene, en orden de Known, todo evento que
+`match_event` acepta, con constantes, `None`, records, constructores,
+parámetros de entidad, opcionales y temporales, variables que no son
+parámetros, ligaduras no ground o mal tipadas y eventos no ground en Known. Y
+un barrido de todas las fixtures de `examples/`: 122 módulos y 280
+experimentos, con `close` e `IncrementalClosure` (o `IncrementalProgramClosure`
+si el módulo tiene Programs, con activaciones) y `ForwardSession`, dan el mismo
+`Debug` que el barrido lineal. Quedan fuera, por el tiempo límite del runner
+con el barrido lineal, seis fixtures de carga: `peano_after`,
+`peano_multiplication`, `peano_polynomial_scenario`,
+`peano_polynomial_product_scenario` (su `partialProduct` se compara arriba),
+`program_incremental_scaling` y `program_proof_scaling`.
+Observado una vez, build de tests sin optimizar: sondeos 93 306 → 22 293,
+rechazos estructurales 81 277 → 10 264, `matching_ms` 632 → 248.
 
 ## 2. Mapa verbo → reglas relevantes
 
@@ -120,6 +155,40 @@ eventos con identificadores estables.
 
 **Verificar.** Mismos resultados exactos; medir con el profiler
 `profile_semi_naive_polynomial_product_fixture`.
+
+**Aplicado en parte (2026-11-18).** `derive/join.rs` sustituye los joins en
+anchura de `match_antecedents_in` y `match_delta_antecedents` por una búsqueda
+en profundidad con un solo mapa de bindings y testigos como referencias a
+Known, clonados sólo al completar un match. Un intento de `match_event` se
+deshace quitando los binders que no estaban. Basta porque `bind_typed` sólo
+inserta valores canónicos y, ante un binder presente, reescribe la forma
+canónica de un valor igual: para los valores puestos durante el join es el
+mismo valor. Un valor inicial puede no serlo (las ligaduras de activación se
+canonizan con los tipos de parámetro de la fuente del Program, no de la
+regla); entonces sólo un binder `PropositionTime` puede cambiar de
+representación, de término a tiempo igual, y ese cambio sobrevive al deshacer.
+No es observable: todo match completo liga todos los binders, así que la
+salida lleva la forma canónica de todos modos, y el índice de argumentos sólo
+lee parámetros no temporales, cuya forma canónica es el propio valor. Recorrer los átomos en orden y los candidatos en orden de Known da los
+matches en el mismo orden lexicográfico que el join en anchura. Los joins
+anteriores quedan como referencia de test (`profile::reference_join`).
+
+No se hizo: testigos como posiciones `usize`, bindings como pila sin mapa ni
+eventos internados.
+
+Verificación: `depth_first_join_matches_copying_join_with_identical_provenance`
+(`Debug` idéntico en `partialProduct` y los mismos contadores, incluidos
+sondeos y rechazos) y `depth_first_delta_join_keeps_incremental_updates`
+(deltas y cierres de `IncrementalClosure` e `IncrementalProgramClosure` en tres
+escenarios, una semilla por actualización);
+`depth_first_delta_join_keeps_batch_updates_and_temporal_boundaries` (lotes de
+varios eventos, de modo que un match tenga varios testigos en la frontera y se
+use la exclusión antes del pivote, en cuatro fixtures base/delta, incluida
+`dynamic_incremental_temporal_boundary.res`, y en los productos en uno y dos
+lotes); y el barrido de todas las fixtures de `known_index_tests.rs`, que
+compara también con el join de referencia. Además, 89 tests existentes de incremental, residual, regresión
+monótona y Peano, ejecutados individualmente. `matching_ms` en `partialProduct`,
+build de tests sin optimizar, dos corridas: 566 → 382 y 596 → 486.
 
 ## 6. Rondas con instantánea de Known
 

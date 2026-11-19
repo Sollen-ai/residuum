@@ -187,7 +187,10 @@ fn indexed_known_matches_linear_product_with_identical_provenance() {
         (closure, session.finish())
     };
     let session = profile::Session::new("partialProduct indexed");
-    let indexed = close_program_reference(seeds, &module, &mut Clock::default()).unwrap();
+    let indexed = {
+        let _header = profile::header_only_index();
+        close_program_reference(seeds, &module, &mut Clock::default()).unwrap()
+    };
     let stats = session.finish();
     assert_eq!(format!("{original:?}"), format!("{indexed:?}"));
     assert_eq!(linear.probes, 2_117_296);
@@ -213,6 +216,245 @@ fn indexed_known_matches_linear_product_with_identical_provenance() {
             linear.comparisons
         )
     );
+}
+
+#[test]
+fn argument_index_matches_linear_product_with_identical_provenance() {
+    // Item 1 of docs/semi-naive-pending-optimizations.md: the same closure, in
+    // the same order with the same stamps, and fewer events probed than with
+    // the header-only index, because bound arguments narrow the candidates.
+    let (module, seeds) = product("partialProduct");
+    let (original, linear) = {
+        let _scan = profile::linear_scan();
+        let session = profile::Session::new("partialProduct linear");
+        let closure =
+            close_program_reference(seeds.clone(), &module, &mut Clock::default()).unwrap();
+        (closure, session.finish())
+    };
+    let header = {
+        let _header = profile::header_only_index();
+        let session = profile::Session::new("partialProduct header");
+        close_program_reference(seeds.clone(), &module, &mut Clock::default()).unwrap();
+        session.finish()
+    };
+    let session = profile::Session::new("partialProduct arguments");
+    let indexed = close_program_reference(seeds, &module, &mut Clock::default()).unwrap();
+    let stats = session.finish();
+    assert_eq!(format!("{original:?}"), format!("{indexed:?}"));
+    assert_eq!(stats.header_rejects, 0);
+    assert!(
+        stats.probes < header.probes,
+        "{} / {}",
+        stats.probes,
+        header.probes
+    );
+    assert!(stats.structural_rejects <= header.structural_rejects);
+    // Every probe the argument index skips was a structural reject before.
+    assert_eq!(
+        header.probes - stats.probes,
+        header.structural_rejects - stats.structural_rejects
+    );
+    assert_eq!(
+        (
+            stats.rounds,
+            stats.evaluations,
+            stats.activated,
+            stats.candidates,
+            stats.duplicates,
+            stats.comparisons
+        ),
+        (
+            linear.rounds,
+            linear.evaluations,
+            linear.activated,
+            linear.candidates,
+            linear.duplicates,
+            linear.comparisons
+        )
+    );
+    eprintln!(
+        "probes: linear {} header {} arguments {}; structural rejects: header {} arguments {}",
+        linear.probes,
+        header.probes,
+        stats.probes,
+        header.structural_rejects,
+        stats.structural_rejects
+    );
+}
+
+#[test]
+fn argument_index_keeps_incremental_updates_equal_to_linear_scan() {
+    // The incremental join reads Known through the argument index; compare a
+    // base plus delta against the same update with the linear scan.
+    let (module, seeds) = product("partialProduct");
+    let rules = module
+        .declarations
+        .iter()
+        .filter_map(|d| match d {
+            Declaration::Rule(r) => Some(r.clone()),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    let split = seeds.len() / 2;
+    let run = || {
+        let mut state =
+            IncrementalClosure::new(seeds[..split].to_vec(), &rules, &mut Clock::default());
+        let delta = state.update(seeds[split..].to_vec(), &mut Clock::default());
+        (format!("{:?}", state.closure()), format!("{delta:?}"))
+    };
+    let linear = {
+        let _scan = profile::linear_scan();
+        run()
+    };
+    assert_eq!(linear, run());
+}
+
+#[test]
+fn depth_first_join_matches_copying_join_with_identical_provenance() {
+    // Item 5 of docs/semi-naive-pending-optimizations.md: the same closure, in
+    // the same order with the same stamps, and the same matching counters.
+    let (module, seeds) = product("partialProduct");
+    let (original, copying) = {
+        let _reference = profile::reference_join();
+        let session = profile::Session::new("partialProduct copying join");
+        let closure =
+            close_program_reference(seeds.clone(), &module, &mut Clock::default()).unwrap();
+        (closure, session.finish())
+    };
+    let session = profile::Session::new("partialProduct depth-first join");
+    let closure = close_program_reference(seeds, &module, &mut Clock::default()).unwrap();
+    let stats = session.finish();
+    assert_eq!(format!("{original:?}"), format!("{closure:?}"));
+    assert_eq!(
+        (
+            stats.rounds,
+            stats.evaluations,
+            stats.candidates,
+            stats.duplicates,
+            stats.comparisons,
+            stats.probes,
+            stats.header_rejects,
+            stats.structural_rejects
+        ),
+        (
+            copying.rounds,
+            copying.evaluations,
+            copying.candidates,
+            copying.duplicates,
+            copying.comparisons,
+            copying.probes,
+            copying.header_rejects,
+            copying.structural_rejects
+        )
+    );
+}
+
+#[test]
+fn depth_first_delta_join_keeps_incremental_updates() {
+    // The delta join with pivots, frontier exclusion and initial bindings:
+    // ordinary rules, then the module closure with program activations.
+    let module = load("peano_polynomial_product_scenario.res");
+    let rules = module
+        .declarations
+        .iter()
+        .filter_map(|d| match d {
+            Declaration::Rule(r) => Some(r.clone()),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    for name in ["unitProduct", "gapsProduct", "partialProduct"] {
+        let seeds = input(&module, name);
+        let split = seeds.len() / 2;
+        let run = || {
+            let mut clock = Clock::default();
+            let mut ordinary = IncrementalClosure::new(seeds[..split].to_vec(), &rules, &mut clock);
+            let mut programs =
+                IncrementalProgramClosure::new(seeds[..split].to_vec(), &module, &mut clock)
+                    .unwrap();
+            let mut trace = String::new();
+            for seed in &seeds[split..] {
+                let a = ordinary.update(vec![seed.clone()], &mut clock);
+                let b = programs.update(vec![seed.clone()], &mut clock);
+                trace.push_str(&format!("{a:?}\n{b:?}\n"));
+            }
+            format!("{trace}{:?}\n{:?}", ordinary.closure(), programs.closure())
+        };
+        let expected = {
+            let _reference = profile::reference_join();
+            run()
+        };
+        assert_eq!(expected, run(), "{name}");
+    }
+}
+
+#[test]
+fn depth_first_delta_join_keeps_batch_updates_and_temporal_boundaries() {
+    // Batches put several events in the first frontier, so a match can have
+    // several frontier witnesses and the exclusion before the pivot is used.
+    // Every self-contained base/delta fixture, the temporal boundary one
+    // included (owns_consumer and protection* need a shared library), plus
+    // the product seeds in one batch and in two.
+    let fixtures = [
+        "dynamic_incremental_temporal_boundary.res",
+        "forward_incremental.res",
+        "forward_provenance.res",
+        "owns_program.res",
+    ];
+    let mut cases: Vec<(String, Module, Vec<Event>, Vec<Vec<Event>>)> = Vec::new();
+    for file in fixtures {
+        let module = load(file);
+        let (base, delta) = (input(&module, "base"), input(&module, "delta"));
+        cases.push((file.to_string(), module, base, vec![delta]));
+    }
+    let module = load("peano_polynomial_product_scenario.res");
+    for name in ["unitProduct", "gapsProduct", "partialProduct"] {
+        let seeds = input(&module, name);
+        let (third, half) = (seeds.len() / 3, seeds.len() / 2);
+        cases.push((
+            format!("{name} one batch"),
+            module.clone(),
+            seeds[..third].to_vec(),
+            vec![seeds[third..].to_vec()],
+        ));
+        cases.push((
+            format!("{name} two batches"),
+            module.clone(),
+            seeds[..third].to_vec(),
+            vec![seeds[third..half].to_vec(), seeds[half..].to_vec()],
+        ));
+    }
+    let mut multiple = 0;
+    for (name, module, base, batches) in &cases {
+        let rules = module
+            .declarations
+            .iter()
+            .filter_map(|d| match d {
+                Declaration::Rule(r) => Some(r.clone()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        let run = || {
+            let mut clock = Clock::default();
+            let mut ordinary = IncrementalClosure::new(base.clone(), &rules, &mut clock);
+            let mut programs =
+                IncrementalProgramClosure::new(base.clone(), module, &mut clock).unwrap();
+            let mut trace = String::new();
+            for batch in batches {
+                let a = ordinary.update(batch.clone(), &mut clock);
+                let b = programs.update(batch.clone(), &mut clock);
+                trace.push_str(&format!("{a:?}\n{b:?}\n"));
+            }
+            format!("{trace}{:?}\n{:?}", ordinary.closure(), programs.closure())
+        };
+        let expected = {
+            let _reference = profile::reference_join();
+            run()
+        };
+        assert_eq!(expected, run(), "{name}");
+        multiple += batches.iter().filter(|b| b.len() > 1).count();
+    }
+    // At least the nine product batches carry several events each.
+    assert!(multiple >= 9, "{multiple}");
 }
 
 #[test]
