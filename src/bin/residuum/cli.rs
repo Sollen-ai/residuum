@@ -48,6 +48,8 @@ impl Command {
 }
 
 /// No inference is implemented here: each command delegates to an existing API.
+/// Source-string entry point, used by the tests; the binary reads files.
+#[cfg(test)]
 pub fn execute(command: Command, source: &str) -> Result<String, Error> {
     let module = residuum::parse_formal_to_typed(source)?;
     execute_module(command, &module)

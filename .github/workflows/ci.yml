@@ -1,0 +1,77 @@
+# Checks every push and pull request: formatting, every test family built
+# without warnings, the full suite, and that the committed reports under
+# docs/legal-geometry are reproduced byte for byte.
+#
+# Locally, AGENTS.md requires scripts/test_safe.py (cgroup memory limit through
+# the user's systemd session). GitHub runners are disposable machines without
+# that session, so CI calls cargo directly; it keeps the runner's single test
+# thread so test order and report writes behave as they do locally.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust 1.87.0
+        uses: dtolnay/rust-toolchain@1.87.0
+        with:
+          components: rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Formatting
+        run: cargo fmt --check
+
+      - name: Release binary
+        run: cargo build --release --locked
+
+      # Each family alone must build without warnings, so a gate that hides a
+      # helper or a test in one family is caught (docs/compile-cost-optimizations.md).
+      - name: Library test families
+        run: |
+          for family in test-core test-residual test-experiments; do
+            echo "::group::lib $family"
+            cargo test --locked --lib --no-run --features "$family"
+            echo "::endgroup::"
+          done
+
+      - name: CLI test families
+        run: |
+          for family in test-core test-legal-geometry test-legal-learning; do
+            echo "::group::cli $family"
+            cargo test --locked --bin residuum --no-run --features "$family"
+            echo "::endgroup::"
+          done
+
+      # Without features every test compiles, so these two runs are the full
+      # suite. Ignored tests (the paused CNL frontend) stay ignored.
+      - name: Library tests
+        run: cargo test --locked --lib -- --test-threads=1
+
+      - name: CLI tests
+        run: cargo test --locked --bin residuum -- --test-threads=1
+
+      - name: Committed reports are reproduced
+        run: |
+          if ! git diff --exit-code --stat; then
+            echo "::error::Tests rewrote committed files; the engine's output changed. Regenerate and review them."
+            exit 1
+          fi

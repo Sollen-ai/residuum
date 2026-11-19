@@ -2,6 +2,9 @@
 
 - Usa `python3 scripts/test_safe.py` para compilación y tests. No ejecutes
   `cargo test` directamente ni binarios de tests fuera del runner con límites.
+  Excepción: la integración continua (`.github/workflows/ci.yml`) llama a
+  `cargo` directamente en las máquinas desechables de GitHub, sin la sesión de
+  systemd que el runner necesita. La regla local no cambia.
 - Respeta la autorización vigente: seleccionar tests individuales no autoriza
   ejecutar todos los tests, con o sin paralelismo.
 - Mantén 1324 MiB total (1 GiB + 300 MiB, autorizado por el propietario el
