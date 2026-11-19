@@ -250,8 +250,13 @@ contra un Bellman-Ford de referencia sobre el hipergrafo.
 ((min, max)) anotan un `Closure` ya calculado sin modificarlo; las semillas se
 pasan explícitamente porque el cierre no las marca. El algoritmo es la
 generalización de Dijkstra de Knuth: cada evento se fija una vez en orden de
-costo creciente, también con ciclos. `ProofCosts.optimal` conserva todas las
-justificaciones que alcanzan el mínimo, en el orden de `closure.derivations`.
+costo creciente, también con ciclos. `ProofCosts.optimal` conserva las
+justificaciones que alcanzan el mínimo y cuyos testigos se fijaron antes que el
+evento, en el orden de `closure.derivations`; seguir cualquiera de ellas termina
+siempre en semillas. Con pesos de al menos 1 eso no excluye nada; con peso 0
+descarta las que cerrarían un ciclo (P ← Q ← P con costo 0). Los tamaños
+saturan en `u64::MAX`, que significa «al menos `u64::MAX`»: el tamaño de árbol
+cuenta un subárbol compartido una vez por uso y puede crecer exponencialmente.
 
 Verificación (`src/derive/proof_cost_tests.rs`): en `forward_provenance.res`
 `shared` tiene costo 1 con las dos justificaciones `fromA` y `fromB`, `result`
@@ -259,7 +264,11 @@ Verificación (`src/derive/proof_cost_tests.rs`): en `forward_provenance.res`
 y etapas coinciden con una relajación tipo Bellman-Ford en cuatro escenarios
 del producto y en los 2ⁿ subconjuntos de semillas de
 `discrete_derivative.res` (con ciclos); y la etapa de cada evento es la ronda
-en que `ForwardSession` lo añade.
+en que `ForwardSession` lo añade. Con peso 0 los costos coinciden con la
+referencia, las justificaciones informadas son un subconjunto de las que
+alcanzan el mínimo y el grafo que forman no tiene ciclos; con peso `u64::MAX`
+los tamaños saturan sin desbordar; los eventos sin prueba desde las semillas
+dadas quedan en `None`, y una semilla que no está en Known no cambia nada.
 
 Pendiente: presentarlo en `explain`, y la versión incremental, en la que una
 adición puede bajar el costo de un evento viejo y la frontera debe incluirlo.
