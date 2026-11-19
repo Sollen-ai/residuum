@@ -74,7 +74,8 @@ fn run(module: &Module, rules: &[Rule], seeds: &[Event], programs: bool) -> (Str
     let mut text = String::new();
     let mut examined = 0;
     if programs {
-        let Ok(mut state) = IncrementalProgramClosure::new(seeds[..split].to_vec(), module, &mut clock)
+        let Ok(mut state) =
+            IncrementalProgramClosure::new(seeds[..split].to_vec(), module, &mut clock)
         else {
             return (text, 0);
         };
@@ -132,7 +133,10 @@ fn relevant_rules_keep_experiment_fixtures_equal_to_examining_every_rule() {
 #[test]
 fn relevant_rules_keep_other_example_fixtures_equal_to_examining_every_rule() {
     let (compared, coverage) = sweep(|path| !path.starts_with(examples().join("experiments")));
-    assert!(compared > 50 && coverage.skipped > 0, "{compared} {coverage:?}");
+    assert!(
+        compared > 50 && coverage.skipped > 0,
+        "{compared} {coverage:?}"
+    );
 }
 
 fn sweep(select: impl Fn(&Path) -> bool) -> (usize, Coverage) {
@@ -184,8 +188,12 @@ fn sweep(select: impl Fn(&Path) -> bool) -> (usize, Coverage) {
                 .filter(|r| matches!(r.body, RuleBody::ResidualClause(_)))
                 .count();
             coverage.unit_only += bodies.iter().filter(|b| only_unit(&b.antecedent)).count();
-            coverage.negative += bodies.iter().filter(|b| has_negative(&b.antecedent)).count();
-            coverage.batches += usize::from(experiment.input.len() - experiment.input.len() / 2 > 1);
+            coverage.negative += bodies
+                .iter()
+                .filter(|b| has_negative(&b.antecedent))
+                .count();
+            coverage.batches +=
+                usize::from(experiment.input.len() - experiment.input.len() / 2 > 1);
             compared += 1;
         }
     }
