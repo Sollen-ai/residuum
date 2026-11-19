@@ -467,17 +467,19 @@ fn one_pass_program_composition_can_miss_feedback_into_the_first_program() {
 
     for (base, alias, before, after_time) in [
         ("pEntry", "pAtTau", tau.clone(), one.clone()),
+        // `t` stays a parameter of these aliases, so their times are the
+        // temporal variable, not a constant named `t`.
         (
             "qStep",
             "qForItem",
-            TimeExpr::At("t".into()),
-            after(&TimeExpr::At("t".into())),
+            TimeExpr::Var("t".into()),
+            after(&TimeExpr::Var("t".into())),
         ),
         (
             "pFeedback",
             "feedbackForItem",
-            TimeExpr::At("t".into()),
-            after(&TimeExpr::At("t".into())),
+            TimeExpr::Var("t".into()),
+            after(&TimeExpr::Var("t".into())),
         ),
     ] {
         let original = rule(&module, base);
