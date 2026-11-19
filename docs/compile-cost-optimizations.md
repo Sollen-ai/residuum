@@ -180,6 +180,18 @@ unos 85 a 150 MiB en la biblioteca y de 110 a 275 en la CLI;
 `test-experiments` y `test-legal-geometry` quedan unos 150 MiB bajo el freno
 de 768, frente a 92 y 34 sin features.
 
+Tras integrar las optimizaciones semi-naive (rama `integration/optimizations`,
+2026-11-19), que añaden tests al núcleo de la biblioteca, los mismos picos con
+los valores por defecto del runner, desde cero, fueron: biblioteca sin
+features 723, `test-core` 539, `test-residual` 632, `test-experiments` 653;
+CLI sin features 708, `test-core` 482, `test-legal-geometry` 624,
+`test-legal-learning` 594. La biblioteca sin features queda a 45 MiB del freno
+de 768, y una recompilación incremental de `test-experiments` llegó a 763; la
+ruta de trabajo segura es compilar por familias. En la misma sesión, una
+compilación incremental de la CLI sin features se detuvo por
+`near_memory_limit` (770 MiB), el mismo fallo intermitente que se describe
+arriba.
+
 El runner rechaza una familia que no tiene tests en el target elegido (por
 ejemplo `--test-target lib --features=test-legal-geometry`): compilaría sólo
 el núcleo, y sin `--test` se ejecutarían los tests del núcleo como si la
