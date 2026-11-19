@@ -107,6 +107,7 @@ fn main() {
     let mut runs: Vec<[f64; 3]> = Vec::new();
     let mut digest = None;
     while runs.len() < repetitions {
+        let pass_started = Instant::now();
         let (seconds, closures) = pass(&module, &rules, programs);
         let mut hasher = DefaultHasher::new();
         closures.hash(&mut hasher);
@@ -117,9 +118,10 @@ fn main() {
         );
         digest = Some(value);
         runs.push(seconds);
-        // Stop early rather than reach the runner's 15 s stage timeout.
-        let total: f64 = seconds.iter().sum();
-        if started.elapsed().as_secs_f64() + total > budget {
+        // Stop early rather than reach the runner's 15 s stage timeout: the
+        // next pass is predicted from this whole pass, formatting included.
+        let pass_seconds = pass_started.elapsed().as_secs_f64();
+        if started.elapsed().as_secs_f64() + pass_seconds > budget {
             break;
         }
     }

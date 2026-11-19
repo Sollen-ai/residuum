@@ -230,13 +230,15 @@ def benchmark(report, rows, baseline, repetitions):
                     for evaluator in ('close', 'incremental', 'forward'):
                         merged[evaluator] += part[evaluator]
             row[label] = merged
+        row['same_closures'] = row['baseline']['digest'] == row['current']['digest']
         results.append(row)
-    summary = dict(baseline=sha, current=head, repetitions=repetitions, fixtures=results)
-    (ROOT / 'target' / 'benchmark-results.json').write_text(json.dumps(summary, indent=2) + '\n')
+        # Written after every fixture, so a later timeout keeps earlier results.
+        summary = dict(baseline=sha, current=head, repetitions=repetitions, fixtures=results)
+        (ROOT / 'target' / 'benchmark-results.json').write_text(json.dumps(summary, indent=2) + '\n')
     print(f'baseline {sha[:7]} vs current {head[:7]}; seconds per pass, median [min-max] (n)')
     for row in results:
         b, c = row['baseline'], row['current']
-        print(f'{row["fixture"]}: same closures {b["digest"] == c["digest"]}')
+        print(f'{row["fixture"]}: same closures {row["same_closures"]}')
         for evaluator in ('close', 'incremental', 'forward'):
             bs, cs = b[evaluator], c[evaluator]
             if not any(bs) and not any(cs):
@@ -246,6 +248,11 @@ def benchmark(report, rows, baseline, repetitions):
             print(f'  {evaluator}: {statistics.median(bs):.4f} [{min(bs):.4f}-{max(bs):.4f}] ({len(bs)})'
                   f' -> {statistics.median(cs):.4f} [{min(cs):.4f}-{max(cs):.4f}] ({len(cs)})'
                   f'  x{ratio:.2f}{note}')
+    differing = [row['fixture'] for row in results if not row['same_closures']]
+    if differing:
+        # Either a behaviour change or a changed Debug shape: never a valid timing.
+        print(f'CLOSURES DIFFER: {", ".join(differing)}; timings are not comparable', file=sys.stderr)
+        return 1
     return 0
 
 
@@ -290,9 +297,9 @@ def main():
                         help='Run cargo clippy on every target with warnings as errors, as CI does')
     parser.add_argument('--benchmark', action='store_true',
                         help='Time release builds of HEAD and --baseline on the heavy fixtures')
-    parser.add_argument('--baseline', default='f3c8df3',
+    parser.add_argument('--baseline', default=None,
                         help='Commit to compare against in --benchmark (default: before the 2026-11-18 optimizations)')
-    parser.add_argument('--repetitions', type=int, default=5,
+    parser.add_argument('--repetitions', type=int, default=None,
                         help='Runs per fixture and version in --benchmark (1..20)')
     parser.add_argument('--fixture', type=Path, help='Run one source-defined Formal fixture with the bounded example runner')
     parser.add_argument('--cli', choices=('run', 'query', 'explain', 'execute'), help='Run one CLI command on --fixture under the same limits')
@@ -336,12 +343,15 @@ def main():
                            or families or args.fmt_check or args.format or args.test_target != 'lib'
                            or args.cli or args.incremental or args.forward or args.library):
         parser.error('--benchmark runs alone')
-    if not args.benchmark and ('--baseline' in sys.argv or '--repetitions' in sys.argv):
+    if not args.benchmark and (args.baseline is not None or args.repetitions is not None):
         parser.error('--baseline and --repetitions require --benchmark')
-    if args.baseline.startswith('-'):
-        parser.error('--baseline must name a commit')
-    if not 1 <= args.repetitions <= 20:
-        parser.error('--repetitions must be in 1..20')
+    if args.benchmark:
+        args.baseline = 'f3c8df3' if args.baseline is None else args.baseline
+        args.repetitions = 5 if args.repetitions is None else args.repetitions
+        if args.baseline.startswith('-'):
+            parser.error('--baseline must name a commit')
+        if not 1 <= args.repetitions <= 20:
+            parser.error('--repetitions must be in 1..20')
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
     report = ROOT / 'target' / 'test-diagnostics' / f'{stamp}-{os.getpid()}'
     report.mkdir(parents=True)
