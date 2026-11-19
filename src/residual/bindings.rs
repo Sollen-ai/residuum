@@ -398,6 +398,40 @@ pub(crate) fn validate_query_options(
     Ok(())
 }
 
+/// Validates `using`/`with` for a fourFusion query: the same scope selection
+/// and binding checks as residual queries, without the residual goal
+/// preflight. A FOUR model constrains every instance in scope, not only those
+/// whose head matches the goal.
+pub(crate) fn validate_four_query_options(
+    module: &Module,
+    options: &mut QueryOptions,
+) -> Result<(), Error> {
+    if options.active {
+        return Err(Error::new("fourFusion does not accept active mode"));
+    }
+    if let Some(scope) = &options.scope {
+        let (_, _, bindings) = resolve_scoped_bindings(module, scope, &options.bindings)?;
+        options.bindings = bindings;
+    } else if !options.bindings.is_empty() {
+        return Err(Error::new(
+            "explicit query bindings require an explicit search scope",
+        ));
+    }
+    Ok(())
+}
+
+/// The rules of a Horn scope and the constraints that the supplied bindings
+/// put on each of them, keyed by rule name and then by rule parameter.
+pub(crate) fn resolve_scoped_bindings(
+    module: &Module,
+    scope: &HornQueryScope,
+    supplied: &[QueryBinding],
+) -> Result<(Vec<Rule>, ConstraintMap, Vec<QueryBinding>), Error> {
+    let rules = scoped_rules(module, scope)?;
+    let (constraints, bindings) = resolve(module, &rules, &BTreeMap::new(), supplied)?;
+    Ok((rules, constraints, bindings))
+}
+
 pub(crate) fn query_parameter_type(
     module: &Module,
     scope: &QueryParameterScope,
@@ -455,7 +489,7 @@ fn find_program<'a>(module: &'a Module, name: &str) -> Result<&'a Program, Error
         .ok_or_else(|| Error::new(format!("unknown query program `{name}`")))
 }
 
-type ConstraintMap = BTreeMap<String, Bindings>;
+pub(crate) type ConstraintMap = BTreeMap<String, Bindings>;
 
 fn resolve(
     module: &Module,

@@ -83,18 +83,60 @@ experiment contraposition
   Horn: false
   Known after close: {~Q() @ tau}
   FOUR fusion: true (3 models / 16 interpretations)
+  FOUR least model: true (goal T; 2 atoms, 3 clauses)
 ```
 
-El evaluador enumera todas las interpretaciones del universo descrito por el
-archivo. Usa fusión FOUR, filtro de I y reglas como desigualdades de verdad,
-según el [experimento semántico](four-model-entailment.md). No incorpora la
-conclusión algebraica a `Known` ni introduce contraposition en `close`.
+Usa fusión FOUR, filtro de I y reglas como desigualdades de verdad, según el
+[experimento semántico](four-model-entailment.md). Decide el modelo
+\(\le_k\)-mínimo ([§12](semi-naive-pending-optimizations.md)): la línea
+`FOUR least model` da la consecuencia, el valor del objetivo en FOUR
+(T, F, B o N) y el tamaño del programa compilado. Con hasta cuatro átomos se
+enumeran además todas las interpretaciones; la línea `FOUR fusion` es esa
+comprobación de referencia y coincide siempre en la consecuencia. Con más
+átomos solo aparece el modelo mínimo. No incorpora la conclusión algebraica a
+`Known` ni introduce contraposition en `close`.
+
+## FOUR con ámbito y bindings explícitos
+
+[four_scoped_bindings.res](../examples/experiments/four_scoped_bindings.res)
+usa la misma sintaxis `using`/`with` que las consultas residuales para
+instanciar reglas con parámetros:
+
+```text
+rule service(person, t) =
+    Served(person) @ t <= Notified(person) @ t
+
+experiment contraposition {
+    premises { ~Notified(alice) @ tau, }
+    query fourFusion ~Served(alice) @ tau
+    using rules { service }
+    with { rule service.person = alice, rule service.t = tau }
+}
+```
+
+La selección del ámbito y la validación de los bindings son las de las
+consultas residuales (`resolve_scoped_bindings`). Después, cada regla del
+ámbito se instancia con sus bindings (`GroundProgram::from_scope`). Un
+parámetro sin binding es un error que nombra el destino `with` que lo fijaría
+(`rule service.t`, `program Service.person`): no se buscan valores entre las
+constantes del módulo. No se aplica el preflight residual sobre el objetivo,
+porque un modelo FOUR restringe todas las instancias del ámbito y no solo las
+que producen el objetivo; la contraposición recorre las reglas hacia atrás.
+
+El resultado se marca `explicit scope`. Cada regla restringe los modelos, de
+modo que una consecuencia en el ámbito también lo es del módulo completo
+(test `adding_rules_never_withdraws_an_entailment`). Un `false` solo dice que
+estas instancias no bastan: `otherInstance` instancia la regla para `bob` y no
+concluye nada sobre `alice`. `active` sigue sin admitirse con `fourFusion`, y
+`steps` recorre la enumeración de las mismas instancias.
 
 ## Alcance y ejecución segura
 
 `fourFusion` nombra explícitamente el modelo de la consulta, sin adoptarlo como
-semántica operacional general de M2. Admite hasta cuatro átomos ground,
-argumentos constantes, reglas sin parámetros y un único tiempo común. Esta
+semántica operacional general de M2. Exige argumentos constantes y un único
+tiempo común; sin ámbito explícito, además, reglas sin parámetros. La
+enumeración y `steps` siguen limitadas a cuatro átomos ground; el modelo
+mínimo no tiene ese límite. Esta
 última restricción evita confundir el matching actual de nombres temporales
 con un nuevo chequeo de constantes literales entre índices distintos. El matcher
 no se cambia en este incremento.

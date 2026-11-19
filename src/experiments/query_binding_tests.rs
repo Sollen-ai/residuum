@@ -279,18 +279,26 @@ fn source_bindings_reject_bad_scopes_values_duplicates_and_conflicts() {
             .to_string();
         assert!(error.contains(message), "{clauses}: {error}");
     }
-    for query in [
-        "active fourFusion target(item) @ after tau",
-        "fourFusion target(item) @ after tau using rules { r }",
-    ] {
-        let text = format!("{SIMPLE}experiment e {{ premises {{}} query {query} }}");
-        assert!(
-            crate::parse_formal_to_typed(&text)
-                .unwrap_err()
-                .to_string()
-                .contains("fourFusion does not accept")
-        );
-    }
+    let four = |query: &str| {
+        crate::parse_formal_to_typed(&format!(
+            "{SIMPLE}experiment e {{ premises {{}} query {query} }}"
+        ))
+    };
+    assert!(
+        four("active fourFusion target(item) @ after tau")
+            .unwrap_err()
+            .to_string()
+            .contains("fourFusion does not accept active mode")
+    );
+    // fourFusion shares the scope and binding checks, not the residual goal
+    // preflight (src/experiments/four_scoped_tests.rs).
+    four("fourFusion target(item) @ after tau using rules { r }").unwrap();
+    assert!(
+        four("fourFusion target(item) @ after tau using rules { r } with { rule s.x = item }")
+            .unwrap_err()
+            .to_string()
+            .contains("outside the selected query scope")
+    );
 }
 
 #[test]

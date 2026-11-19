@@ -1,8 +1,10 @@
-//! Finite reference evaluator: FOUR fusion and the unit filter {T,B}.
-//! This is a query layer; it never augments the Horn closure.
+//! FOUR fusion and the unit filter {T,B} over ground programs: the
+//! knowledge-least model decides entailment; the finite enumeration is the
+//! reference oracle and the step session. This is a query layer; it never
+//! augments the Horn closure.
 
 use super::{Error, FourEntailment, horn};
-use crate::typed::{Antecedent, Event, Experiment, HornClause, Polarity, Rule, Term};
+use crate::typed::{Antecedent, Event, Experiment, HornClause, Module, Polarity, Rule, Term};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Copy)]
@@ -75,7 +77,7 @@ impl GroundProgram {
     pub fn from_ground_rules(experiment: &Experiment, rules: &[Rule]) -> Result<Self, Error> {
         if rules.iter().any(|rule| !rule.parameters.is_empty()) {
             return Err(Error::new(
-                "fourFusion fixture comparison requires ground rules",
+                "fourFusion requires ground rules; bind their parameters with an explicit `using` scope and `with` bindings",
             ));
         }
         Self::new(
@@ -86,6 +88,53 @@ impl GroundProgram {
                 .map(|rule| (rule.name.clone(), horn(rule)))
                 .collect(),
         )
+    }
+
+    /// The premises and goal of `experiment` with every rule of its explicit
+    /// `using` scope instantiated by its `with` bindings, through the same
+    /// scope selection and binding checks as residual queries.
+    pub fn from_scope(module: &Module, experiment: &Experiment) -> Result<Self, Error> {
+        let options = &experiment.query_options;
+        if options.active {
+            return Err(Error::new("fourFusion does not accept active mode"));
+        }
+        let scope = options.scope.as_ref().ok_or_else(|| {
+            Error::new("explicit query bindings require an explicit search scope")
+        })?;
+        let (rules, constraints, _) =
+            crate::residual::resolve_scoped_bindings(module, scope, &options.bindings)?;
+        Self::instantiate(experiment, &rules, &constraints)
+    }
+
+    /// A parameter without a binding is an error naming the `with` target
+    /// that would fix it: there is no search over the constants of the module.
+    fn instantiate(
+        experiment: &Experiment,
+        rules: &[Rule],
+        constraints: &crate::residual::ConstraintMap,
+    ) -> Result<Self, Error> {
+        let unbound = BTreeMap::new();
+        let mut clauses = Vec::new();
+        for rule in rules {
+            let bound = constraints.get(&rule.name).unwrap_or(&unbound);
+            if let Some(parameter) = rule
+                .parameters
+                .iter()
+                .find(|p| !bound.contains_key(&p.name))
+            {
+                return Err(Error::new(format!(
+                    "fourFusion needs every parameter in scope bound; `{}` is not",
+                    crate::programs::binding_target(&rule.name, &parameter.name)
+                )));
+            }
+            let instance = Rule {
+                name: rule.name.clone(),
+                parameters: Vec::new(),
+                body: crate::elab::substitute_rule_body(&rule.body, bound),
+            };
+            clauses.push((rule.name.clone(), horn(&instance)));
+        }
+        Self::new(&experiment.input, &experiment.goal, clauses)
     }
 
     fn new(
@@ -105,7 +154,7 @@ impl GroundProgram {
                 || atom.args.iter().any(|arg| !matches!(arg, Term::Const(_)))
         }) {
             return Err(Error::new(
-                "fourFusion comparison requires constant arguments and one shared proposition time",
+                "fourFusion requires constant arguments and one shared proposition time",
             ));
         }
         Ok(Self {
@@ -156,7 +205,7 @@ pub(super) fn entailment(program: &GroundProgram) -> Result<FourEntailment, Erro
 fn check_enumerable(program: &GroundProgram) -> Result<(), Error> {
     if program.atoms.len() > ENUMERATION_ATOMS {
         return Err(Error::new(
-            "fourFusion fixture comparison supports at most four ground atoms",
+            "the FOUR enumeration supports at most four ground atoms",
         ));
     }
     Ok(())
@@ -215,6 +264,20 @@ pub struct FourLeastModel {
     /// Compiled Horn clauses over the bits, including premises.
     pub clauses: usize,
     pub entailed: bool,
+}
+
+impl FourLeastModel {
+    /// `(p, n)` of a literal in the least model: a negative literal swaps the
+    /// components of its atom. None for an atom outside the program.
+    pub fn value_of(&self, event: &Event) -> Option<(bool, bool)> {
+        let index = self.atoms.binary_search(&key(event)).ok()?;
+        let (p, n) = self.values[index];
+        Some(if event.polarity == Polarity::Positive {
+            (p, n)
+        } else {
+            (n, p)
+        })
+    }
 }
 
 /// A bit of the compiled problem: `2 * atom` is p, `2 * atom + 1` is n.

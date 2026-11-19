@@ -28,7 +28,7 @@ de rondas y `PropositionTime` ([discrete-derivative.md](discrete-derivative.md) 
 | 9 | Prueba mínima: tropical y (min, max) | Nueva capacidad; `explain` más legible | Medio | capa de procedencia, `explain` — **aplicada** como pasada posterior |
 | 10 | Uniones *worst-case optimal* | Alto en cuerpos cíclicos | Alto | matching |
 | 11 | Evaluación dirigida por objetivo | Depende de la consulta | Alto | residual / forward |
-| 12 | FOUR por modelo menos informado | Alto: de 4ⁿ a polinomial | Medio | `experiments/four.rs` — **aplicada** como modo aparte |
+| 12 | FOUR por modelo menos informado | Alto: de 4ⁿ a polinomial | Medio | `experiments/four.rs` — **aplicada** e integrada en `run_experiments` (2026-11-19) |
 
 Fuera de alcance por diseño: `close` sigue siendo el cierre ingenuo de
 referencia y oráculo de comparación. Las optimizaciones van en los evaluadores
@@ -490,9 +490,17 @@ individuales con el runner:
 - la contraposición de `four_counterexample.res`, con su modelo mínimo
   explícito, y una cadena de seis átomos que la enumeración rechaza.
 
-Pendiente: usarlo desde `run_experiments` cuando se supera el límite, lo que
-exige decidir qué informar en lugar de `models` e `interpretations`, y
-grounding de reglas con parámetros, que hoy rechazan ambos evaluadores.
+**Integrado (2026-11-19).** `run_experiments` decide toda consulta
+`fourFusion` con el modelo mínimo y añade la línea `FOUR least model` (valor
+del objetivo, átomos, cláusulas). La enumeración se ejecuta solo con hasta
+cuatro átomos, como comprobación, y conserva la línea `FOUR fusion`. Ambos
+evaluadores, `FourSession` y el oráculo de tests reciben un `GroundProgram`,
+que concentra las comprobaciones de groundness. Las reglas con parámetros se
+instancian solo mediante `using`/`with`, con la resolución de bindings de las
+consultas residuales; no hay grounding automático sobre las constantes del
+módulo. Véase [FOUR con ámbito](executable-fixtures.md#four-con-ámbito-y-bindings-explícitos).
+Las 30 consultas de fixtures con reglas parametrizadas siguen rechazadas con
+un mensaje que remite a `using`/`with`; no se les añadieron bindings.
 
 ## Fuera de este inventario
 

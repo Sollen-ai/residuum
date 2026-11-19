@@ -7,6 +7,10 @@ use crate::typed::{Antecedent, Residual, ResidualClause, Rule, RuleBody};
 mod bindings;
 mod engine;
 mod query;
+pub(crate) use bindings::{
+    ConstraintMap, query_parameter_type, resolve_scoped_bindings, scoped_rules,
+    validate_four_query_options, validate_query_options,
+};
 pub use bindings::{
     HornQueryScope, QueryBinding, QueryParameterScope, QueryWithBindings,
     begin_active_residual_query_in_scope_with_bindings, begin_active_residual_query_with_bindings,
@@ -14,7 +18,6 @@ pub use bindings::{
     query_active_program_residual_with_bindings, query_program_residual_with_bindings,
     query_residual_with_bindings,
 };
-pub(crate) use bindings::{query_parameter_type, scoped_rules, validate_query_options};
 mod steps;
 pub use query::query_residual;
 pub use steps::{ActiveResidualSession, ResidualSearchTree, ResidualSession, ResidualStep};

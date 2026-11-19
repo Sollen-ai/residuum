@@ -8,7 +8,7 @@ use crate::typed::{
     TimeExpr,
 };
 
-pub(super) type Bindings = BTreeMap<String, SubstitutionValue>;
+pub(crate) type Bindings = BTreeMap<String, SubstitutionValue>;
 
 /// Query one Horn/residual lambda against a ground goal and immutable evidence.
 /// First constrain its head by the goal, then remove evidenced antecedent atoms.

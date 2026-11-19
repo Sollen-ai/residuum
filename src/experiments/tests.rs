@@ -69,8 +69,10 @@ fn source_defined_four_query_distinguishes_entailment_from_horn() {
     let result = &results[0];
     assert_eq!(result.experiment.input_kind, ExperimentInputKind::Premises);
     assert!(!result.horn_goal);
+    let four = result.four.as_ref().unwrap();
+    assert!(four.entailed() && !four.scoped);
     assert_eq!(
-        result.four,
+        four.enumeration,
         Some(FourEntailment {
             interpretations: 16,
             models: 3,
@@ -79,7 +81,10 @@ fn source_defined_four_query_distinguishes_entailment_from_horn() {
     );
     assert_eq!(result.closure.known, result.experiment.input);
     assert!(result.closure.derivations.is_empty());
-    assert!(render_results(&results).contains("FOUR fusion: true (3 models / 16 interpretations)"));
+    let output = render_results(&results);
+    assert!(output.contains("FOUR fusion: true (3 models / 16 interpretations)\n"));
+    // ~P is T because P is F: ~Q gives n(Q), and P <= Q carries it back to P.
+    assert!(output.contains("FOUR least model: true (goal T; 2 atoms, 3 clauses)\n"));
 }
 
 #[test]
@@ -184,10 +189,15 @@ fn fixture_runner_rejects_unbounded_or_unsupported_comparisons() {
     let too_many = format!(
         "{FOUR}\nderived verb R()\nderived verb S()\nderived verb T()\nrule r() = P() @ tau <= R() @ tau\nrule s() = R() @ tau <= S() @ tau\nrule u() = S() @ tau <= T() @ tau\n"
     );
-    assert!(
-        run_experiments(&parse_formal_to_typed(&too_many).unwrap())
-            .unwrap_err()
-            .to_string()
-            .contains("at most four")
+    // Beyond four atoms the least model answers alone; no model counts.
+    let results = run_experiments(&parse_formal_to_typed(&too_many).unwrap()).unwrap();
+    let four = results[0].four.as_ref().unwrap();
+    assert_eq!(
+        (four.least_model.atoms.len(), four.enumeration.as_ref()),
+        (5, None)
     );
+    assert!(four.entailed());
+    let output = render_results(&results);
+    assert!(!output.contains("FOUR fusion:"));
+    assert!(output.contains("FOUR least model: true (goal T; 5 atoms, 9 clauses)\n"));
 }

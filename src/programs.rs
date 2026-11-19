@@ -180,6 +180,22 @@ pub(crate) fn shared_parameter(program: &Program, name: &str) -> String {
     format!("#{}:shared:{name}", program.identity)
 }
 
+/// The `with` target that binds a parameter of a scoped rule, inverting the
+/// hygienic names of [`shared_parameter`] and [`rule_use_substitution`]:
+/// `program P.x` for a shared parameter, `rule R.x` for a rule's own binder.
+pub(crate) fn binding_target(rule: &str, parameter: &str) -> String {
+    let original = rule.rsplit("::").next().unwrap_or(rule);
+    if let Some(hygienic) = parameter.strip_prefix('#') {
+        if let Some((program, name)) = hygienic.split_once(":shared:") {
+            return format!("program {program}.{name}");
+        }
+        if let Some((_, name)) = hygienic.rsplit_once(':') {
+            return format!("rule {original}.{name}");
+        }
+    }
+    format!("rule {original}.{parameter}")
+}
+
 /// Lower all uses together. The caller supplies this whole vector to one close.
 /// Unbound Program parameters remain binders; unmapped Rule binders stay local.
 pub fn compile_program(program: &Program, module: &Module) -> Result<Vec<Rule>, Error> {

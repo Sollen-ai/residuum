@@ -1,6 +1,6 @@
 //! Bounded presentation adapters over the stepwise evaluator APIs.
 use super::*;
-use residuum::experiments::{DefaultSession, FourSession};
+use residuum::experiments::{DefaultSession, FourSession, GroundProgram};
 use residuum::typed::{ExperimentInputKind, ExperimentQueryKind, Rule};
 use residuum::{ForwardSession, ResidualSession};
 
@@ -358,7 +358,12 @@ fn render(
                     }
                 }
                 ExperimentQueryKind::FourFusion => {
-                    let mut session = FourSession::new(experiment, &rules)?;
+                    let program = if experiment.query_options.scope.is_some() {
+                        GroundProgram::from_scope(module, experiment)?
+                    } else {
+                        GroundProgram::from_ground_rules(experiment, &rules)?
+                    };
+                    let mut session = FourSession::from_program(program)?;
                     for _ in 0..options.max_steps {
                         let step = session.step();
                         record(
@@ -597,6 +602,25 @@ mod tests {
         )
         .unwrap();
         assert!(full.contains("FOUR fusion: true (3 models / 16 interpretations)"));
+        // Scoped queries step through the instances their bindings select.
+        let scoped = execute_steps(
+            Command::Query,
+            include_str!("../../../../examples/experiments/four_scoped_bindings.res"),
+            StepOptions {
+                max_steps: 10,
+                trace: false,
+            },
+        )
+        .unwrap();
+        assert!(scoped.contains("constraint: rule service\n"));
+        assert!(scoped.contains("constraint: rule Service::0::service\n"));
+        assert_eq!(
+            scoped
+                .matches("FOUR fusion: true (3 models / 16 interpretations)")
+                .count(),
+            2
+        );
+        assert!(scoped.contains("FOUR fusion: false (72 models / 256 interpretations)"));
     }
     #[test]
     fn default_trace_selects_once_and_existing_invocations_keep_their_output() {

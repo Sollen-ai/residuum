@@ -503,12 +503,8 @@ fn lower_query_options(
     fields: &BTreeMap<String, Vec<Field>>,
     constants: &BTreeMap<String, Type>,
 ) -> Result<QueryOptions, Error> {
-    if kind != ExperimentQueryKind::Residual
-        && (source.active || source.scope.is_some() || source.bindings.is_some())
-    {
-        return Err(Error::new(
-            "fourFusion does not accept active mode, residual search scope or bindings",
-        ));
+    if kind != ExperimentQueryKind::Residual && source.active {
+        return Err(Error::new("fourFusion does not accept active mode"));
     }
     if source.bindings.is_some() && source.scope.is_none() {
         return Err(Error::new(
@@ -557,7 +553,14 @@ fn lower_query_options(
         scope,
         bindings,
     };
-    crate::residual::validate_query_options(module, &mut options, goal)?;
+    match kind {
+        ExperimentQueryKind::Residual => {
+            crate::residual::validate_query_options(module, &mut options, goal)?
+        }
+        ExperimentQueryKind::FourFusion => {
+            crate::residual::validate_four_query_options(module, &mut options)?
+        }
+    }
     Ok(options)
 }
 

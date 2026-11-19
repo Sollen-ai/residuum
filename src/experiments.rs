@@ -63,7 +63,44 @@ pub struct ExperimentResult {
     pub horn_goal: bool,
     pub residual: Option<ProgramResidualQuery>,
     pub active_residual: Option<ActiveProgramResidualQuery>,
-    pub four: Option<FourEntailment>,
+    pub four: Option<FourResult>,
+}
+
+/// A fourFusion answer. The least model decides it; the enumeration is the
+/// reference check, run only where it is cheap.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FourResult {
+    /// Knowledge-least model of the ground program; its `entailed` is the answer.
+    pub least_model: FourLeastModel,
+    /// Model counts, present only for at most four ground atoms.
+    pub enumeration: Option<FourEntailment>,
+    /// The rules came from an explicit `using` scope. Every rule constrains
+    /// the models, so `entailed` also holds for the whole module; a goal that
+    /// is not entailed may still follow from rule instances outside the scope.
+    pub scoped: bool,
+}
+
+impl FourResult {
+    pub fn entailed(&self) -> bool {
+        self.least_model.entailed
+    }
+}
+
+fn four_result(program: &GroundProgram, scoped: bool) -> Result<FourResult, Error> {
+    let least_model = four_least_model(program);
+    let enumeration = if program.atoms().len() <= four::ENUMERATION_ATOMS {
+        Some(four::entailment(program)?)
+    } else {
+        None
+    };
+    if let Some(enumeration) = &enumeration {
+        debug_assert_eq!(enumeration.entailed, least_model.entailed);
+    }
+    Ok(FourResult {
+        least_model,
+        enumeration,
+        scoped,
+    })
 }
 
 #[derive(Default)]
@@ -139,9 +176,10 @@ pub fn run_experiments(module: &Module) -> Result<Vec<ExperimentResult>, Error> 
                 // Check the finite ground universe before calling close.
                 (
                     None,
-                    Some(four::entailment(&GroundProgram::from_ground_rules(
-                        experiment, &rules,
-                    )?)?),
+                    Some(four_result(
+                        &GroundProgram::from_ground_rules(experiment, &rules)?,
+                        false,
+                    )?),
                 )
             }
         };
@@ -166,8 +204,8 @@ fn run_configured_query(
     module: &Module,
     experiment: &Experiment,
 ) -> Result<ExperimentResult, Error> {
-    if experiment.query_kind != ExperimentQueryKind::Residual {
-        return Err(Error::new("configured queries require residual mode"));
+    if experiment.query_kind == ExperimentQueryKind::FourFusion {
+        return run_scoped_four_query(module, experiment);
     }
     let options = &experiment.query_options;
     let (closure, residual, active_residual) = if options.active {
@@ -229,6 +267,32 @@ fn run_configured_query(
         residual,
         active_residual,
         four: None,
+    })
+}
+
+/// fourFusion over an explicit scope: the same scope selection and binding
+/// checks as residual queries, then every rule in scope instantiated by its
+/// bindings. Unbound parameters are errors, never a search over constants.
+fn run_scoped_four_query(
+    module: &Module,
+    experiment: &Experiment,
+) -> Result<ExperimentResult, Error> {
+    let program = GroundProgram::from_scope(module, experiment)?;
+    let scope = experiment
+        .query_options
+        .scope
+        .as_ref()
+        .expect("from_scope checked the scope");
+    // Bindings constrain the query, not the theory used for observation.
+    let rules = crate::residual::scoped_rules(module, scope)?;
+    let closure = close(experiment.input.clone(), &rules, &mut Clock::default());
+    Ok(ExperimentResult {
+        experiment: experiment.clone(),
+        horn_goal: closure.known.contains(&experiment.goal),
+        closure,
+        residual: None,
+        active_residual: None,
+        four: Some(four_result(&program, true)?),
     })
 }
 
@@ -313,6 +377,36 @@ fn require_program_acyclic(module: &Module) -> Result<(), Error> {
         }
     }
     require_acyclic_with_edges(&dependencies, activation_edges)
+}
+
+/// The enumeration line when it ran, then the least model as the certificate:
+/// the goal's value in FOUR and the size of the compiled program.
+fn render_four(four: &FourResult, goal: &Event) -> String {
+    let mut output = String::new();
+    if let Some(enumeration) = &four.enumeration {
+        output.push_str(&format!(
+            "  FOUR fusion: {} ({} models / {} interpretations)\n",
+            enumeration.entailed, enumeration.models, enumeration.interpretations
+        ));
+    }
+    let least = &four.least_model;
+    let value = match least
+        .value_of(goal)
+        .expect("the goal is an atom of its program")
+    {
+        (true, false) => "T",
+        (false, true) => "F",
+        (true, true) => "B",
+        (false, false) => "N",
+    };
+    output.push_str(&format!(
+        "  FOUR least model: {} (goal {value}; {} atoms, {} clauses{})\n",
+        least.entailed,
+        least.atoms.len(),
+        least.clauses,
+        if four.scoped { "; explicit scope" } else { "" }
+    ));
+    output
 }
 
 pub(crate) fn horn(rule: &Rule) -> crate::typed::HornClause {
@@ -476,10 +570,7 @@ pub fn render_results(results: &[ExperimentResult]) -> String {
             ));
         }
         if let Some(four) = &result.four {
-            output.push_str(&format!(
-                "  FOUR fusion: {} ({} models / {} interpretations)\n",
-                four.entailed, four.models, four.interpretations
-            ));
+            output.push_str(&render_four(four, &result.experiment.goal));
         }
         if let Some(active) = &result.active_residual {
             output.push_str(&format!(
@@ -586,6 +677,8 @@ mod discrete_derivative_tests;
 
 #[cfg(all(test, family_experiments))]
 mod four_least_model_tests;
+#[cfg(all(test, family_experiments))]
+mod four_scoped_tests;
 #[cfg(all(test, family_experiments))]
 mod legal_case_tests;
 #[cfg(all(test, family_experiments))]

@@ -9,13 +9,14 @@ use crate::typed::{Antecedent, Event, ExperimentQueryKind, HornClause, Polarity,
 const FOUR: &str = include_str!("../../examples/experiments/four_counterexample.res");
 
 /// Every source fixture that declares a fourFusion query.
-const FIXTURES: [&str; 11] = [
+const FIXTURES: [&str; 12] = [
     "examples/experiments/theory_bridge.res",
     "examples/experiments/theory_bridge_tensor.res",
     "examples/experiments/composition_domain.res",
     "examples/experiments/discrete_derivative.res",
     "examples/experiments/dynamic_incremental_programs.res",
     "examples/experiments/four_counterexample.res",
+    "examples/experiments/four_scoped_bindings.res",
     "examples/experiments/legal_geometry/general.res",
     "examples/experiments/legal_geometry/identifiability_cases.res",
     "examples/experiments/legal_geometry/patrimonial.res",
@@ -49,7 +50,12 @@ fn least_model_matches_enumeration_on_every_four_fixture() {
             if experiment.query_kind != ExperimentQueryKind::FourFusion {
                 continue;
             }
-            let program = match GroundProgram::from_ground_rules(experiment, &rules) {
+            let program = if experiment.query_options.is_legacy() {
+                GroundProgram::from_ground_rules(experiment, &rules)
+            } else {
+                GroundProgram::from_scope(&module, experiment)
+            };
+            let program = match program {
                 Ok(program) => program,
                 Err(error) => {
                     *rejected.entry(error.to_string()).or_default() += 1;
@@ -91,7 +97,7 @@ fn least_model_matches_enumeration_on_every_four_fixture() {
             by_reason("constant arguments"),
             rejected.values().sum::<usize>()
         ),
-        (8, 0, 30, 1, 31),
+        (11, 0, 30, 1, 31),
         "{rejected:?}"
     );
 }
@@ -310,4 +316,63 @@ fn least_model_equals_the_meet_of_models_beyond_four_atoms() {
     }
     assert!(beyond > 50, "{beyond}");
     assert!(entailed > 10 && refuted > 10, "{entailed} / {refuted}");
+}
+
+#[test]
+fn adding_rules_never_withdraws_an_entailment() {
+    // The soundness of scoped fourFusion answers: every rule constrains the
+    // models, so a goal entailed by some rules stays entailed by more of them.
+    let base = format!("{FOUR}\nderived verb R()\nderived verb S()\n");
+    let module = parse_formal_to_typed(&base).unwrap();
+    let Some(Declaration::Experiment(template)) = module
+        .declarations
+        .iter()
+        .find(|d| matches!(d, Declaration::Experiment(_)))
+    else {
+        panic!("experiment");
+    };
+    let rule_template = rules_of(&module).remove(0);
+    let mut atoms: Vec<Event> = ["P", "Q", "R", "S"]
+        .iter()
+        .map(|verb| {
+            let mut event = template.goal.clone();
+            event.verb = verb.to_string();
+            event.polarity = Polarity::Positive;
+            event
+        })
+        .collect();
+    atoms.sort();
+    let mut random = Random(0x5851_f42d_4c95_7f2d);
+    let mut gained = 0;
+    for trial in 0..1000 {
+        let mut experiment = template.clone();
+        experiment.input = (0..random.below(3))
+            .map(|_| literal(&atoms, &mut random, 70))
+            .collect();
+        experiment.goal = literal(&atoms, &mut random, 60);
+        let rules: Vec<Rule> = (0..1 + random.below(6))
+            .map(|i| {
+                let mut rule = rule_template.clone();
+                rule.name = format!("r{i}");
+                rule.body = RuleBody::HornClause(HornClause {
+                    antecedent: antecedent(&atoms, &mut random, 2),
+                    consequent: literal(&atoms, &mut random, 60),
+                });
+                rule
+            })
+            .collect();
+        let mut previous = false;
+        for scope in 0..=rules.len() {
+            let program = GroundProgram::from_ground_rules(&experiment, &rules[..scope]).unwrap();
+            let entailed = four_least_model(&program).entailed;
+            assert!(
+                entailed || !previous,
+                "trial {trial}, scope {scope}: {rules:?}"
+            );
+            gained += usize::from(entailed && !previous && scope > 0);
+            previous = entailed;
+        }
+    }
+    // Some entailments appear only once more rules are in scope.
+    assert!(gained > 50, "{gained}");
 }
