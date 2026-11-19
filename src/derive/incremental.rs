@@ -12,6 +12,10 @@ use std::collections::BTreeSet;
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct IncrementalStats {
     pub rounds: usize,
+    /// Rules matched against a frontier, summed over rounds. Rules that share
+    /// no antecedent header (verb, polarity, arity) with the round's frontier
+    /// are skipped and not counted, so this depends on the frontier's headers
+    /// as well as on the number of rules and rounds.
     pub rules_examined: usize,
     pub delta_pivot_matches: usize,
     pub full_matches: usize,

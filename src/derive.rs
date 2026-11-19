@@ -13,6 +13,8 @@ use relevance::RuleHeaders;
 mod profile;
 #[cfg(test)]
 mod profile_tests;
+#[cfg(test)]
+mod relevance_tests;
 pub use incremental::{ClosureDelta, IncrementalClosure, IncrementalStats};
 pub use program_incremental::{IncrementalProgramClosure, ProgramActivation, ProgramClosureDelta};
 
