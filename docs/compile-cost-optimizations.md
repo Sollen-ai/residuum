@@ -152,25 +152,35 @@ El runner acepta `--features=a,b`, rechaza nombres desconocidos, la pasa a
 python3 scripts/test_safe.py --test-target cli --features=test-legal-learning --test <nombre>
 ```
 
-Medición del 2026-11-18, `CARGO_INCREMENTAL=0`, perfil `test` con `debug = 0`,
-compilación de `residuum` desde cero con dependencias ya compiladas; tests
-activos contados con `--list` a través del runner:
+Medición del 2026-11-18, perfil `test` con `debug = 0`, compilación de
+`residuum` desde cero con dependencias ya compiladas, en dos condiciones: con
+`CARGO_INCREMENTAL=0` y con los valores por defecto del runner (incremental
+activo, tras borrar `target/debug/incremental/residuum-*`). Tests activos
+contados con `--list` a través del runner:
 
-| Selección | Target | Pico cgroup (MiB) | Tests activos |
-|---|---|---:|---:|
-| todas (sin features) | lib | 582 | 291 |
-| `test-core` | lib | 471 | 149 |
-| `test-residual` | lib | 510 | 222 |
-| `test-experiments` | lib | 552 | 218 |
-| todas (sin features) | cli | 575 | 195 |
-| `test-core` | cli | 373 | 122 |
-| `test-legal-geometry` | cli | 521 | 174 |
-| `test-legal-learning` | cli | 444 | 143 |
+| Selección | Target | Pico cgroup, sin incremental (MiB) | Pico cgroup, runner por defecto (MiB) | Tests activos |
+|---|---|---:|---:|---:|
+| todas (sin features) | lib | 582 | 676 | 291 |
+| `test-core` | lib | 471 | 526 | 149 |
+| `test-residual` | lib | 510 | 590 | 222 |
+| `test-experiments` | lib | 552 | 616 | 218 |
+| todas (sin features) | cli | 575 | 734 | 195 |
+| `test-core` | cli | 373 | 460 | 122 |
+| `test-legal-geometry` | cli | 521 | 624 | 174 |
+| `test-legal-learning` | cli | 444 | 583 | 143 |
 
-La unión de los nombres de las familias de cada target es igual, test por
-test, al conjunto sin features; ningún test se pierde ni se duplica entre
-familias. Sin features la biblioteca midió 582 frente a 614 y 619 en otras
-ejecuciones del mismo caso: la variación entre corridas es de unos 40 MiB, del
-mismo orden que algunas diferencias de la tabla. El ahorro es mayor en el núcleo
-(≈ 110 a 200 MiB); `test-experiments` y `test-legal-geometry` quedan unos
-250 MiB bajo el freno de 768, frente a unos 190 sin features.
+Las compilaciones por familia no emiten avisos en ninguna de las dos
+condiciones. La unión de los nombres de las familias de cada target es igual,
+test por test, al conjunto sin features; ningún test se pierde ni se duplica
+entre familias. Sin features la biblioteca midió 582 frente a 614 y 619 en
+otras ejecuciones del mismo caso: la variación entre corridas es de unos
+40 MiB, del mismo orden que algunas diferencias de la tabla. Con los valores
+por defecto del runner, que es como se compila de ordinario, el ahorro es de
+unos 85 a 150 MiB en la biblioteca y de 110 a 275 en la CLI;
+`test-experiments` y `test-legal-geometry` quedan unos 150 MiB bajo el freno
+de 768, frente a 92 y 34 sin features.
+
+El runner rechaza una familia que no tiene tests en el target elegido (por
+ejemplo `--test-target lib --features=test-legal-geometry`): compilaría sólo
+el núcleo, y sin `--test` se ejecutarían los tests del núcleo como si la
+familia estuviera incluida.
