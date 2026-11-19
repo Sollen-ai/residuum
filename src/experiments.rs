@@ -140,7 +140,7 @@ pub fn run_experiments(module: &Module) -> Result<Vec<ExperimentResult>, Error> 
         && (experiments.is_empty() || experiments.iter().any(|e| e.query_options.is_legacy()))
     {
         return Err(Error::new(
-            "a module with Program needs an explicit `using` scope on every query (residual, active residual or fourFusion); unscoped queries over Program members are not implemented",
+            "querying a module with Program needs at least one experiment, and every experiment must be active residual or declare an explicit `using` scope (residual or fourFusion)",
         ));
     }
     if module

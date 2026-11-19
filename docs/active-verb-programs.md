@@ -56,7 +56,11 @@ derives an Effect instance without activating its associated program.
 
 No state transformation is executed. Residual search, abduction, defaults,
 FOUR semantics, and incremental inference keep their existing rules-only paths.
-Forward support for associations does not yet extend those paths.
+Forward support for associations does not yet extend those paths. (Superseded
+since: scoped and active residual queries and, from 2026-11-19, scoped
+fourFusion queries accept `using program P`; see
+[residual-query-source-bindings.md](residual-query-source-bindings.md) and
+[executable-fixtures.md](executable-fixtures.md#four-con-ámbito-y-bindings-explícitos).)
 
 ## Composition of associated programs
 

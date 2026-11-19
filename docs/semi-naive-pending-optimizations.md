@@ -36,9 +36,9 @@ incrementales; `new_by_derivative` ya ofrece una base construida por derivada.
 
 ## 1. Índice por argumentos ya ligados
 
-**Problema (estado anterior al 2026-11-18).** `KnownIndex` agrupa sólo por verbo, polaridad y aridad. En
-`present(x) & motive(x)`, con `x` ya ligado por el pivote, el join recorre
-todos los `motive(...)` y llama a `match_event` con cada uno.
+**Problema (estado anterior al 2026-11-18).** `KnownIndex` agrupaba sólo por verbo, polaridad y aridad. En
+`present(x) & motive(x)`, con `x` ya ligado por el pivote, el join recorría
+todos los `motive(...)` y llamaba a `match_event` con cada uno.
 
 **Propuesta.** Índice secundario por posición de argumento y término ground,
 consultado cuando el patrón tiene esa posición ya ligada en los bindings
@@ -92,9 +92,9 @@ rechazos estructurales 81 277 → 10 264, `matching_ms` 632 → 248.
 
 ## 2. Mapa verbo → reglas relevantes
 
-**Problema (estado anterior al 2026-11-18).** Cada ronda de `update` examina todas las reglas
-(`rules_examined`), aunque ningún evento de la frontera tenga un verbo que
-aparezca en sus antecedentes.
+**Problema (estado anterior al 2026-11-18).** Cada ronda de `update` examinaba todas las reglas
+(`rules_examined`), aunque ningún evento de la frontera tuviera un verbo que
+apareciera en sus antecedentes.
 
 **Propuesta.** Precalcular, al construir el estado, el conjunto de reglas por
 (verbo, polaridad) de sus átomos. Por ronda, examinar sólo la unión de las
@@ -181,8 +181,8 @@ con ciclos (`program_incremental_cycles.res`).
 
 ## 5. Menos copias en el join
 
-**Problema (estado anterior al 2026-11-18).** Por cada candidato se clonan `bindings` (`BTreeMap`) y el vector
-de testigos, y los testigos son `Event` completos.
+**Problema (estado anterior al 2026-11-18).** Por cada candidato se clonaban `bindings` (`BTreeMap`) y el
+vector de testigos, y los testigos eran `Event` completos.
 
 **Propuesta.** Testigos como posiciones en Known (`usize`) durante el join,
 convertidos a `Event` sólo al construir el `AntecedentMatch` final; bindings
@@ -402,7 +402,7 @@ forward se beneficia sin duplicar su contrato.
 
 ## 12. Consecuencia FOUR por modelo menos informado
 
-**Problema (estado anterior al 2026-11-18).** `experiments/four.rs` decidía
+**Problema (estado anterior al 2026-11-19).** `experiments/four.rs` decidía
 `fourFusion` enumerando las \(4^n\) interpretaciones de los átomos ground y
 conservando las que satisfacen premisas y reglas. Por eso la enumeración se
 limitaba a cuatro átomos. `FourSession` refinaba por pasos eliminando mundos,

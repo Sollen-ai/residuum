@@ -176,7 +176,7 @@ Tres tests individuales mediante `python3 scripts/test_safe.py`; no suite:
 - hypothetical_trigger_obligations_preserve_dynamic_activation_and_evidence.
 
 Todos pasaron. Compilación: 5,3616 s, 414,48 MiB RSS. Tests: 0,0214 s / 15,18 MiB;
-0,0414 s / 15,42 MiB; 0,0211 s / 15,54 MiB. Límites conservados: 1 GiB total,
+0,0414 s / 15,42 MiB; 0,0211 s / 15,54 MiB. Límites conservados (los de entonces): 1 GiB total,
 sin swap, un trabajo de Cargo y un hilo. Informe:
 `target/test-diagnostics/20261010T022107880051Z-718615`.
 

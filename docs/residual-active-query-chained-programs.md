@@ -111,8 +111,8 @@ de la regresión. No demuestra que I tenga otra semántica algebraica.
 ## Verificación
 
 Compilación separada con CARGO_BUILD_JOBS=1 y CARGO_PROFILE_TEST_DEBUG=0; ejecución
-mediante test_safe.py --binary con nombres exactos. Límites intactos: 1 GiB,
-sin swap, umbral preventivo 768 MiB, un trabajo Cargo y un hilo del harness.
+mediante test_safe.py --binary con nombres exactos. Límites intactos (los de
+entonces): 1 GiB, sin swap, umbral preventivo 768 MiB, un trabajo Cargo y un hilo del harness.
 
 - Biblioteca: tres tests de Unit/Tensor pasaron.
   Informe `target/test-diagnostics/20261010T032416651077Z-793413`.

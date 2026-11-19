@@ -132,9 +132,9 @@ familias y consistency siguen pendientes. Tampoco se
 extiende residual, FOUR, incrementalidad de asociaciones ni State/runtime.
 En esa fecha el runner de consultas experimentales rechazaba los módulos con
 Program para no tratar silenciosamente sus miembros como una consulta sobre Rules
-ordinarias. Hoy solo los rechaza si alguna consulta no declara ámbito: las
-consultas residuales, residuales activas y `fourFusion` con `using rules {…}` o
-`using program P` se admiten (véanse
+ordinarias. Hoy solo los rechaza si no tiene consultas o si alguna no es activa
+ni declara ámbito: se admiten las consultas residuales activas y las residuales
+y `fourFusion` con `using rules {…}` o `using program P` (véanse
 [residual-query-source-bindings.md](residual-query-source-bindings.md) y
 [FOUR con ámbito](executable-fixtures.md#four-con-ámbito-y-bindings-explícitos)).
 El pipeline nuevo es forward; las consultas existentes de módulos sin Program

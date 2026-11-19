@@ -105,8 +105,8 @@ python3 scripts/test_safe.py --test experiments::interface_tests::interface_chec
 ```
 
 El campo query residual del consumidor sólo nombra el goal observado por el
-harness incremental; no se realiza búsqueda residual. Los tests se ejecutan
-individualmente bajo 1 GiB total, sin swap, un job y los timeouts existentes.
+harness incremental; no se realiza búsqueda residual. Los tests se ejecutaron
+individualmente bajo 1 GiB (límite de entonces) total, sin swap, un job y los timeouts existentes.
 
 ## Resultado observado
 

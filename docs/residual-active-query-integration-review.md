@@ -84,9 +84,10 @@ No se publican resultados truncados. Esto no introduce un nuevo enum.
 > un módulo con Program se rechaza entero si no tiene experimentos o si
 > alguno de ellos es legacy, de modo que un solo experimento legacy bloquea
 > también los activos del mismo módulo (`src/experiments.rs` y
-> `cli/steps.rs`; desde 2026-11-19 el mensaje dice que cada consulta necesita
-> un ámbito `using` explícito); y FOUR no acepta modo activo. Desde 2026-11-19
-> toda consulta `fourFusion` pasa por `run_four_query` y admite `using`/`with`. Detalle de la sintaxis en
+> `cli/steps.rs`; desde 2026-11-19 el mensaje pide al menos un experimento
+> y que cada uno sea residual activo o declare un ámbito `using`); y FOUR no acepta modo activo.
+> Desde 2026-11-19 toda consulta `fourFusion` pasa por `run_four_query` y
+> admite `using`/`with`. Detalle de la sintaxis en
 > [residual-query-source-bindings.md](residual-query-source-bindings.md).
 > La lista siguiente describe el estado en la fecha de esta revisión.
 
@@ -125,7 +126,7 @@ de cada certificado e inmutabilidad del módulo y la evidencia.
 Pasaron tres tests individuales: contrato nuevo y regresiones de Programs
 encadenados/compatibilidad Horn. Se compiló una vez con CARGO_BUILD_JOBS=1 y
 CARGO_PROFILE_TEST_DEBUG=0; después se ejecutaron mediante test_safe.py --binary
-con nombres exactos. Límites intactos: 1 GiB, sin swap, umbral preventivo 768 MiB,
+con nombres exactos. Límites intactos (los de entonces): 1 GiB, sin swap, umbral preventivo 768 MiB,
 un trabajo Cargo y un hilo del harness.
 
 Informe: `target/test-diagnostics/20261010T035643626110Z-831518`.

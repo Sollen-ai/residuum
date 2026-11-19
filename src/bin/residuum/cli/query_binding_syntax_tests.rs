@@ -66,7 +66,9 @@ fn forward_commands_ignore_query_constraints_and_legacy_query_errors_stay_explic
         execute_module(Command::Query, &legacy)
             .unwrap_err()
             .to_string()
-            .contains("needs an explicit `using` scope on every query")
+            .contains(
+                "every experiment must be active residual or declare an explicit `using` scope"
+            )
     );
     let malformed = source.replace("using program P", "using program Missing");
     assert!(

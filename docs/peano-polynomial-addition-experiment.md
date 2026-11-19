@@ -173,7 +173,7 @@ individually, with no complete-suite execution:
   `target/test-diagnostics/20261009T001916502301Z-3662322`.
 
 The new test target compiled at approximately 345 MiB peak RSS; selected test
-processes used at most approximately 16 MiB. The runner's 1 GiB, no-swap,
+processes used at most approximately 16 MiB. The runner's 1 GiB (the then-current limit), no-swap,
 one-job/one-thread limits and preventive stop threshold remain intact.
 
 Only the two new `.res` files, the new verifier, its test registration and this
