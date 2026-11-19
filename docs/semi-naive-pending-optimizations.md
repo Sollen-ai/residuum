@@ -1,6 +1,6 @@
 # Optimizaciones pendientes del cierre semi-naive
 
-Inventario de 2026-10-29 (punto 12 añadido el 2026-11-01), posterior a la rama `semi-naive-dedup-index`
+Inventario de 2026-10-29 (punto 12 añadido el 2026-11-01 e implementado el 2026-11-18), posterior a la rama `semi-naive-dedup-index`
 (índice en `IncrementalClosure`, deduplicación con `BTreeSet`, pivotes sin
 repetición y `new_by_derivative`). Este documento no modifica código ni
 contratos. Ordena trabajo posible; ninguna entrada está medida todavía y su
@@ -27,7 +27,7 @@ de rondas y `PropositionTime` ([discrete-derivative.md](discrete-derivative.md) 
 | 9 | Prueba mínima: tropical y (min, max) | Nueva capacidad; `explain` más legible | Medio | capa de procedencia, `explain` |
 | 10 | Uniones *worst-case optimal* | Alto en cuerpos cíclicos | Alto | matching |
 | 11 | Evaluación dirigida por objetivo | Depende de la consulta | Alto | residual / forward |
-| 12 | FOUR por modelo menos informado | Alto: de 4ⁿ a polinomial | Medio | `experiments/four.rs` |
+| 12 | FOUR por modelo menos informado | Alto: de 4ⁿ a polinomial | Medio | `experiments/four.rs` — **aplicada** como modo aparte |
 
 Fuera de alcance por diseño: `close` sigue siendo el cierre ingenuo de
 referencia y oráculo de comparación. Las optimizaciones van en los evaluadores
@@ -329,6 +329,31 @@ todos, el meet \(\le_k\) de los modelos es modelo, y la enumeración, el modelo
 mínimo y la propagación compilada dan la misma consecuencia. No ejecuta código
 Rust: falta un test que compare un evaluador Rust contra `entailment` en las
 fixtures existentes.
+
+**Aplicado (2026-11-18).** `experiments::four_least_model` compila las
+cláusulas anteriores sobre los bits \((p_i, n_i)\) y calcula el modelo
+\(\le_k\)-mínimo por propagación unitaria con contadores, lineal en el tamaño de
+los cuerpos compilados. Devuelve `FourLeastModel { atoms, values, clauses,
+entailed }`. Conserva las restricciones de `four.rs` (reglas ground,
+argumentos constantes, un solo tiempo) salvo el límite de cuatro átomos.
+`entailment`, `FourSession` y la salida de la CLI no cambian: la enumeración
+sigue siendo la que cuenta `models` e `interpretations`, y el oráculo.
+
+Verificación en `src/experiments/four_least_model_tests.rs`, tests
+individuales con el runner:
+
+- las 39 consultas `fourFusion` de las once fixtures: 8 se comparan y
+  coinciden; 30 rechazadas por ambos evaluadores por reglas con parámetros y 1
+  por argumentos o tiempos, con el mismo mensaje;
+- 3.000 programas ground al azar (semilla fija, hasta cuatro átomos, cuerpos
+  anidados arbitrarios construidos como TypedAST, `I` y literales negativos),
+  con ambos resultados presentes: misma consecuencia que la enumeración;
+- la contraposición de `four_counterexample.res`, con su modelo mínimo
+  explícito, y una cadena de seis átomos que la enumeración rechaza.
+
+Pendiente: usarlo desde `run_experiments` cuando se supera el límite, lo que
+exige decidir qué informar en lugar de `models` e `interpretations`, y
+grounding de reglas con parámetros, que hoy rechazan ambos evaluadores.
 
 ## Fuera de este inventario
 

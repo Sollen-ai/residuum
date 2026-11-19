@@ -17,7 +17,7 @@ mod default_selection;
 mod default_steps;
 pub use default_steps::{DefaultPhase, DefaultSession, DefaultStep};
 mod four;
-pub use four::{FourSession, FourStep};
+pub use four::{FourLeastModel, FourSession, FourStep, four_least_model};
 mod incremental;
 
 pub use default_selection::{DefaultExperimentResult, run_default_experiments};
@@ -579,6 +579,8 @@ mod composition_structure_tests;
 #[cfg(all(test, family_experiments))]
 mod discrete_derivative_tests;
 
+#[cfg(all(test, family_experiments))]
+mod four_least_model_tests;
 #[cfg(all(test, family_experiments))]
 mod legal_case_tests;
 #[cfg(all(test, family_experiments))]
