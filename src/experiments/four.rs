@@ -145,6 +145,34 @@ fn world(atoms: &[Event], mask: usize) -> BTreeMap<Event, Value> {
         .collect()
 }
 
+/// Test oracle without the four-atom bound: the knowledge meet of every model
+/// found by enumeration, and whether the goal holds in all of them. Atoms in
+/// the order of [`FourLeastModel::atoms`]. Exponential; for small tests only.
+#[cfg(test)]
+pub(super) fn meet_of_models(
+    experiment: &Experiment,
+    rules: &[Rule],
+) -> Result<(Vec<(bool, bool)>, bool), Error> {
+    let (atoms, clauses) = prepare_ground(experiment, rules)?;
+    let mut meet = vec![(true, true); atoms.len()];
+    let mut entailed = true;
+    for mask in 0..1usize << (2 * atoms.len()) {
+        let world = world(&atoms, mask);
+        if experiment.input.iter().all(|fact| value(fact, &world).p)
+            && clauses.iter().all(|clause| {
+                evaluate(&clause.antecedent, &world).le(value(&clause.consequent, &world))
+            })
+        {
+            for (slot, atom) in meet.iter_mut().zip(&atoms) {
+                let value = world[atom];
+                *slot = (slot.0 && value.p, slot.1 && value.n);
+            }
+            entailed &= value(&experiment.goal, &world).p;
+        }
+    }
+    Ok((meet, entailed))
+}
+
 /// The knowledge-least model of the premises and rules
 /// (docs/semi-naive-pending-optimizations.md §12).
 ///
