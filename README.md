@@ -1500,7 +1500,10 @@ Puedes repetir `--test` para seleccionar varios tests, usar `--binary PATH` para
 mantener un binario ya compilado, o usar `--compile-only`, `--fmt-check` y
 `--format` para separar las fases. `--clippy` ejecuta `cargo clippy` sobre todos
 los targets con avisos como errores, como la integración continua, bajo los
-mismos límites que cualquier compilación. `--test-target lib|cli` elige el target y
+mismos límites que cualquier compilación. `--benchmark` compara builds release
+del commit actual y de un commit base sobre las fixtures de carga, con los
+mismos límites salvo 600 s para sus dos compilaciones
+([resultados](docs/semi-naive-pending-optimizations.md#medición-en-release-2026-11-19)). `--test-target lib|cli` elige el target y
 `--features=<familia,…>` compila solo esas familias de tests (`test-core`,
 `test-residual`, `test-experiments` en la biblioteca; `test-core`,
 `test-legal-geometry`, `test-legal-learning` en la CLI); sin `--features` se

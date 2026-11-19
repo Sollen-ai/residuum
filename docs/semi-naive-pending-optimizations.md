@@ -516,6 +516,41 @@ Verificación en `src/experiments/four_least_model_tests.rs` y
 No hay prueba mecanizada; el argumento de la observación anterior más estas
 comprobaciones finitas son la evidencia.
 
+## Medición en release (2026-11-19)
+
+Las comparaciones anteriores se midieron en builds de tests sin optimizar.
+`python3 scripts/test_safe.py --benchmark` compara builds release del commit
+actual y de un commit base (por defecto f3c8df3, anterior a §1, §2, §5, §9 y
+§12) sobre las seis fixtures de carga. El arnés
+[benchmark_closure.rs](../examples/benchmark_closure.rs) ejecuta, por
+experimento, los evaluadores que cambiaron (`IncrementalClosure` o
+`IncrementalProgramClosure` con un lote, y `ForwardSession` hasta 64 rondas)
+y mide sólo la evaluación, no el análisis del fichero. Se compila el mismo
+arnés contra ambas versiones, y una huella de todos los cierres comprueba que
+calculan lo mismo. Las ejecuciones usan los límites del runner (un núcleo con
+`CPUQuota=100%`, 1324 MiB, 15 s por ejecución); sólo las dos compilaciones
+release tienen 600 s (AGENTS.md).
+
+Mediana de siete pasadas por versión, en segundos, máquina de desarrollo con
+carga media 1,3 en 16 núcleos; los cierres coinciden en las seis fixtures. Las
+seis tienen Programs, así que `close` no interviene.
+
+| Fixture | Incremental | Factor | ForwardSession | Factor |
+|---|---:|---:|---:|---:|
+| `peano_after` | 0,0115 → 0,0064 | ×1,80 | 0,0748 → 0,0238 | ×3,14 |
+| `peano_multiplication` | 0,0216 → 0,0188 | ×1,15 | 0,2387 → 0,1575 | ×1,52 |
+| `peano_polynomial_scenario` | 0,0415 → 0,0308 | ×1,35 | 0,3446 → 0,2160 | ×1,60 |
+| `peano_polynomial_product_scenario` | 0,7627 → 0,3979 | ×1,92 | 10,6182 → 2,6780 | ×3,97 |
+| `program_incremental_scaling` | 0,0218 → 0,0114 | ×1,91 | 0,1427 → 0,0607 | ×2,35 |
+| `program_proof_scaling` | 0,0001 → 0,0001 | ×0,93 | 0,0002 → 0,0002 | ×0,97 |
+
+Los mínimos y máximos de cada serie quedan dentro de un 10 % de la mediana
+salvo una pasada base de 0,97 s en el incremental del producto.
+`program_proof_scaling` es demasiado pequeña para medir una diferencia. Son
+observaciones de una máquina, no cotas: el factor depende del tamaño de Known,
+que es donde actúan el índice por argumentos y el join en profundidad. Los
+resultados completos se escriben en `target/benchmark-results.json`.
+
 ## Fuera de este inventario
 
 Las eliminaciones y reemplazos (DRed, conteo de soportes) son una capacidad
