@@ -15,14 +15,18 @@
 //! increasing order, also with cycles. Ties are kept: every justification that
 //! attains the minimum is reported, in the order of `closure.derivations`,
 //! provided all its witnesses were fixed before its head. Following any
-//! reported justification therefore always ends at seeds. With weights of at
-//! least 1 this excludes nothing (every witness costs strictly less than the
-//! head); with weight 0 it drops cost-attaining justifications that would close
-//! a cycle, such as P ← Q ← P at cost 0.
+//! reported justification therefore always ends at seeds, and every event
+//! with a cost has at least one. When every witness costs strictly less than
+//! the head (weights of at least 1, below saturation) this excludes nothing.
+//! When a witness can cost as much as the head (weight 0, or saturation) the
+//! reported set is a sound subset that depends on the order events were fixed:
+//! it drops every justification that would close a cycle, such as P ← Q ← P
+//! at cost 0, and may also drop acyclic ones, such as Q ⇐ P when the axioms P
+//! and Q both cost 0 and Q was fixed first.
 //!
-//! Sizes saturate: a cost of `u64::MAX` means "at least `u64::MAX`", and all
-//! saturated justifications of an event tie. Tree size counts a shared
-//! subproof once per use, so it can grow exponentially with the depth.
+//! Sizes saturate: a cost of `u64::MAX` means "at least `u64::MAX`". Tree size
+//! counts a shared subproof once per use, so it can grow exponentially with
+//! the depth.
 use crate::typed::{Closure, DerivedEvent, Event};
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BinaryHeap};

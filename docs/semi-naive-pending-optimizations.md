@@ -253,8 +253,13 @@ generalización de Dijkstra de Knuth: cada evento se fija una vez en orden de
 costo creciente, también con ciclos. `ProofCosts.optimal` conserva las
 justificaciones que alcanzan el mínimo y cuyos testigos se fijaron antes que el
 evento, en el orden de `closure.derivations`; seguir cualquiera de ellas termina
-siempre en semillas. Con pesos de al menos 1 eso no excluye nada; con peso 0
-descarta las que cerrarían un ciclo (P ← Q ← P con costo 0). Los tamaños
+siempre en semillas, y todo evento con costo tiene al menos una. Si cada
+testigo cuesta estrictamente menos que la cabeza (pesos de al menos 1, sin
+saturación) eso no excluye nada. Si un testigo puede costar lo mismo que la
+cabeza (peso 0, o saturación) el conjunto informado es un subconjunto correcto
+que depende del orden de fijación: descarta las que cerrarían un ciclo
+(P ← Q ← P con costo 0) y puede descartar también alguna acíclica (Q ⇐ P si
+los axiomas P y Q cuestan 0 y Q se fijó antes). Los tamaños
 saturan en `u64::MAX`, que significa «al menos `u64::MAX`»: el tamaño de árbol
 cuenta un subárbol compartido una vez por uso y puede crecer exponencialmente.
 
