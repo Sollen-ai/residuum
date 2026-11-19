@@ -7,8 +7,10 @@ pub use steps::{DerivativeSession, DerivativeStep, ForwardSession, ForwardStep};
 mod join;
 mod known_index;
 mod program_incremental;
+mod proof_cost;
 mod relevance;
 use known_index::{KnownIndex, KnownView};
+pub use proof_cost::{ProofCosts, kleene_stages, minimum_proof_sizes};
 use relevance::RuleHeaders;
 #[cfg(test)]
 mod known_index_tests;
@@ -16,6 +18,8 @@ mod known_index_tests;
 mod profile;
 #[cfg(test)]
 mod profile_tests;
+#[cfg(test)]
+mod proof_cost_tests;
 #[cfg(test)]
 mod relevance_tests;
 pub use incremental::{ClosureDelta, IncrementalClosure, IncrementalStats};
