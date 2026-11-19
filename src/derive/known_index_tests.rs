@@ -162,10 +162,12 @@ fn argument_index_keeps_every_candidate_match_event_accepts() {
                  expected {expected:?}\ncandidates {candidates:?}"
             );
             accepted += expected.len();
-            pruned += known.len() - candidates.len();
+            // Only what the argument maps remove beyond the header bucket.
+            pruned += view.candidates(&pattern).count() - candidates.len();
         }
     }
-    // Neither side of the comparison is vacuous.
+    // Neither side is vacuous: matches were accepted, and the argument maps
+    // narrowed the header buckets (this fails with argument narrowing off).
     assert!(accepted > 1000 && pruned > 1000, "{accepted} / {pruned}");
 }
 
