@@ -211,10 +211,25 @@ def benchmark(report, rows, baseline, repetitions):
     for fixture in HEAVY_FIXTURES:
         row = dict(fixture=fixture)
         for label, binary, cwd in versions:
-            # Same relative path and working layout for both versions.
-            output = run_bounded(report, rows, 'benchmark', f'{label} {fixture}',
-                                 [str(binary), fixture, str(repetitions), '12'], 15, cwd=cwd)
-            row[label] = json.loads(output.read_text().strip().splitlines()[-1])
+            # Same relative path and working layout for both versions. A slow
+            # pass may leave fewer runs than requested in one 15 s stage, so
+            # further stages collect the rest; each stage is its own run.
+            merged = None
+            for stage in range(repetitions):
+                missing = repetitions - (len(merged['forward']) if merged else 0)
+                if missing <= 0:
+                    break
+                output = run_bounded(report, rows, 'benchmark', f'{label} {fixture} #{stage + 1}',
+                                     [str(binary), fixture, str(missing), '12'], 15, cwd=cwd)
+                part = json.loads(output.read_text().strip().splitlines()[-1])
+                if merged is None:
+                    merged = part
+                else:
+                    if part['digest'] != merged['digest']:
+                        raise RuntimeError(f'{label} {fixture}: closures differ between stages')
+                    for evaluator in ('close', 'incremental', 'forward'):
+                        merged[evaluator] += part[evaluator]
+            row[label] = merged
         results.append(row)
     summary = dict(baseline=sha, current=head, repetitions=repetitions, fixtures=results)
     (ROOT / 'target' / 'benchmark-results.json').write_text(json.dumps(summary, indent=2) + '\n')
