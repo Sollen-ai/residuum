@@ -5,7 +5,7 @@
 
 use super::{Error, FourEntailment, horn};
 use crate::typed::{
-    Antecedent, Declaration, Event, Experiment, HornClause, Module, Polarity, Rule, Term,
+    Antecedent, Declaration, Event, Experiment, HornClause, Module, Polarity, Rule, Term, TimeExpr,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -64,9 +64,9 @@ fn evaluate(antecedent: &Antecedent, world: &BTreeMap<Event, Value>) -> Value {
 /// A ground FOUR problem: premises, ground Horn clauses labelled by the rule
 /// each came from, the goal, and the sorted atoms they mention.
 ///
-/// Only the constructors build it, and they check that every argument is a
-/// constant and every atom shares the goal's time, so the evaluators below
-/// never see a parameter. Bindings and scopes are resolved before this point.
+/// Only the constructors build it, and they check that every atom is ground
+/// (no variable in its arguments or its time), so the evaluators below never
+/// see a parameter. Bindings and scopes are resolved before this point.
 #[derive(Debug, Clone)]
 pub struct GroundProgram {
     facts: Vec<Event>,
@@ -156,15 +156,16 @@ impl GroundProgram {
             collect(&clause.antecedent, &mut atoms);
             atoms.insert(key(&clause.consequent));
         }
-        // This finite comparison retains its single-index experimental domain.
-        // The scoped forward matcher itself also supports other literal indices.
-        if atoms.iter().any(|atom| {
-            atom.proposition.time != goal.proposition.time
-                || atom.args.iter().any(|arg| !matches!(arg, Term::Const(_)))
-        }) {
-            return Err(Error::new(
-                "fourFusion requires constant arguments and one shared proposition time",
-            ));
+        // Any ground argument or time is just another atom: FOUR compares
+        // atoms by equality and never matches a pattern against them.
+        if let Some(atom) = atoms
+            .iter()
+            .find(|atom| !ground_time(&atom.proposition.time) || !atom.args.iter().all(ground_term))
+        {
+            return Err(Error::new(format!(
+                "fourFusion requires ground atoms; `{}` has a variable",
+                super::render_event(atom)
+            )));
         }
         Ok(Self {
             facts: facts.to_vec(),
@@ -188,8 +189,25 @@ impl GroundProgram {
     }
 }
 
+fn ground_term(term: &Term) -> bool {
+    match term {
+        Term::Var(_) => false,
+        Term::Const(_) | Term::None => true,
+        Term::Constructor { argument, .. } => ground_term(argument),
+        Term::RecordLiteral { fields, .. } => fields.iter().all(|f| ground_term(&f.value)),
+    }
+}
+
+fn ground_time(time: &TimeExpr) -> bool {
+    match time {
+        TimeExpr::At(_) => true,
+        TimeExpr::Var(_) => false,
+        TimeExpr::After(time) => ground_time(time),
+    }
+}
+
 /// The largest program the enumeration accepts: 4^4 = 256 interpretations.
-pub(super) const ENUMERATION_ATOMS: usize = 4;
+pub const ENUMERATION_ATOMS: usize = 4;
 
 /// Counts the models among all `4^n` interpretations. The reference oracle,
 /// bounded to [`ENUMERATION_ATOMS`].

@@ -1,7 +1,8 @@
 //! Bounded presentation adapters over the stepwise evaluator APIs.
 use super::*;
 use residuum::experiments::{
-    DefaultSession, FourSession, GroundProgram, four_least_model, render_four_least_model,
+    DefaultSession, FOUR_ENUMERATION_ATOMS, FourSession, GroundProgram, four_least_model,
+    render_four_least_model,
 };
 use residuum::typed::{ExperimentInputKind, ExperimentQueryKind};
 use residuum::{ForwardSession, ResidualSession};
@@ -354,43 +355,51 @@ fn render(
                 ExperimentQueryKind::FourFusion => {
                     let program = GroundProgram::for_experiment(module, experiment)?;
                     let least = four_least_model(&program);
-                    let mut session = FourSession::from_program(program)?;
-                    for _ in 0..options.max_steps {
-                        let step = session.step();
-                        record(
-                            &mut snapshots,
-                            format!(
-                                "  round {}\n    constraint: {}\n    eliminated: {}\n    remaining interpretations: {} / {}\n",
-                                step.round,
-                                step.constraint.unwrap_or_else(|| "none".into()),
-                                step.eliminated.len(),
-                                step.surviving.len(),
-                                step.interpretations
-                            ),
-                            options.trace,
-                        );
-                        complete = step.complete;
-                        if complete {
-                            break;
+                    let least_line = render_four_least_model(
+                        &least,
+                        &experiment.goal,
+                        experiment.query_options.scope.is_some(),
+                    );
+                    if program.atoms().len() > FOUR_ENUMERATION_ATOMS {
+                        // No interpretations to step through; the least model
+                        // still answers, as in plain `query`.
+                        writeln!(
+                            final_output,
+                            "  enumeration skipped: {} ground atoms (at most {FOUR_ENUMERATION_ATOMS})\n{least_line}",
+                            program.atoms().len()
+                        )
+                        .unwrap();
+                        complete = true;
+                    } else {
+                        let mut session = FourSession::from_program(program)?;
+                        for _ in 0..options.max_steps {
+                            let step = session.step();
+                            record(
+                                &mut snapshots,
+                                format!(
+                                    "  round {}\n    constraint: {}\n    eliminated: {}\n    remaining interpretations: {} / {}\n",
+                                    step.round,
+                                    step.constraint.unwrap_or_else(|| "none".into()),
+                                    step.eliminated.len(),
+                                    step.surviving.len(),
+                                    step.interpretations
+                                ),
+                                options.trace,
+                            );
+                            complete = step.complete;
+                            if complete {
+                                break;
+                            }
                         }
-                    }
-                    if let Some(result) = session.result() {
-                        writeln!(
-                            final_output,
-                            "  FOUR fusion: {} ({} models / {} interpretations)",
-                            result.entailed, result.models, result.interpretations
-                        )
-                        .unwrap();
-                        writeln!(
-                            final_output,
-                            "{}",
-                            render_four_least_model(
-                                &least,
-                                &experiment.goal,
-                                experiment.query_options.scope.is_some()
+                        if let Some(result) = session.result() {
+                            writeln!(
+                                final_output,
+                                "  FOUR fusion: {} ({} models / {} interpretations)",
+                                result.entailed, result.models, result.interpretations
                             )
-                        )
-                        .unwrap();
+                            .unwrap();
+                            writeln!(final_output, "{least_line}").unwrap();
+                        }
                     }
                 }
             }
@@ -630,6 +639,11 @@ mod tests {
             2
         );
         assert!(full.contains("FOUR least model: true (goal T; 2 atoms, 3 clauses)\n"));
+        // Above the enumeration bound, steps answers with the least model alone.
+        assert!(scoped.contains(
+            "  enumeration skipped: 5 ground atoms (at most 4)\n  FOUR least model: true (goal T; 5 atoms, 7 clauses; explicit scope)\n"
+        ));
+        assert_eq!(scoped.matches("status: complete").count(), 4);
     }
     #[test]
     fn default_trace_selects_once_and_existing_invocations_keep_their_output() {

@@ -17,7 +17,10 @@ mod default_selection;
 mod default_steps;
 pub use default_steps::{DefaultPhase, DefaultSession, DefaultStep};
 mod four;
-pub use four::{FourLeastModel, FourSession, FourStep, GroundProgram, four_least_model};
+pub use four::{
+    ENUMERATION_ATOMS as FOUR_ENUMERATION_ATOMS, FourLeastModel, FourSession, FourStep,
+    GroundProgram, four_least_model,
+};
 mod incremental;
 
 pub use default_selection::{DefaultExperimentResult, run_default_experiments};
@@ -268,8 +271,8 @@ fn run_configured_query(
 /// Every fourFusion query, with or without `using`/`with`. Horn observes the
 /// same ground rules that FOUR evaluates: with a scope, the bindings define
 /// the theory, so closing over the uninstantiated rules would report a
-/// different one. Ground rules at one time cannot grow the closure, so no
-/// acyclicity check is needed before `close`.
+/// different one. Ground rules derive only their own consequents, so the
+/// closure is finite and no acyclicity check is needed before `close`.
 fn run_four_query(module: &Module, experiment: &Experiment) -> Result<ExperimentResult, Error> {
     let program = GroundProgram::for_experiment(module, experiment)?;
     let closure = close(

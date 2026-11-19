@@ -403,9 +403,9 @@ forward se beneficia sin duplicar su contrato.
 
 **Problema.** `experiments/four.rs` decide `fourFusion` enumerando las
 \(4^n\) interpretaciones de los átomos ground y conservando las que satisfacen
-premisas y reglas. Por eso `prepare` limita el experimento a cuatro átomos.
+premisas y reglas. Por eso la enumeración se limitaba a cuatro átomos.
 `FourSession` refina por pasos eliminando mundos, pero recorre el mismo
-universo.
+universo. (Estado antes del 2026-11-18; véase **Integrado** al final.)
 
 **Observación.** Cada valor es un par de bits `Value { p, n }`. Con la
 semántica de `four.rs`, todas las condiciones de modelo son cláusulas Horn
@@ -472,36 +472,43 @@ fixtures existentes.
 **Aplicado (2026-11-18).** `experiments::four_least_model` compila las
 cláusulas anteriores sobre los bits \((p_i, n_i)\) y calcula el modelo
 \(\le_k\)-mínimo por propagación unitaria con contadores, lineal en el tamaño de
-los cuerpos compilados. Devuelve `FourLeastModel { atoms, values, clauses,
-entailed }`. Conserva las restricciones de `four.rs` (reglas ground,
-argumentos constantes, un solo tiempo) salvo el límite de cuatro átomos.
-`entailment`, `FourSession` y la salida de la CLI no cambian: la enumeración
-sigue siendo la que cuenta `models` e `interpretations`, y el oráculo.
-
-Verificación en `src/experiments/four_least_model_tests.rs`, tests
-individuales con el runner:
-
-- las 39 consultas `fourFusion` de las once fixtures: 8 se comparan y
-  coinciden; 30 rechazadas por ambos evaluadores por reglas con parámetros y 1
-  por argumentos o tiempos, con el mismo mensaje;
-- 3.000 programas ground al azar (semilla fija, hasta cuatro átomos, cuerpos
-  anidados arbitrarios construidos como TypedAST, `I` y literales negativos),
-  con ambos resultados presentes: misma consecuencia que la enumeración;
-- la contraposición de `four_counterexample.res`, con su modelo mínimo
-  explícito, y una cadena de seis átomos que la enumeración rechaza.
+los cuerpos compilados.
 
 **Integrado (2026-11-19).** `run_experiments` decide toda consulta
 `fourFusion` con el modelo mínimo y añade la línea `FOUR least model` (valor
 del objetivo, átomos, cláusulas). La enumeración se ejecuta solo con hasta
-cuatro átomos, como comprobación, y conserva la línea `FOUR fusion`. Ambos
-evaluadores, `FourSession` y el oráculo de tests reciben un `GroundProgram`,
-que concentra las comprobaciones de groundness. Las reglas con parámetros se
-instancian solo mediante `using`/`with`, con la resolución de bindings de las
-consultas residuales; no hay grounding automático sobre las constantes del
-módulo. Con ámbito, Horn observa las mismas instancias que FOUR. Un desacuerdo
-entre el modelo mínimo y la enumeración es un error en toda compilación. Véase [FOUR con ámbito](executable-fixtures.md#four-con-ámbito-y-bindings-explícitos).
-Las 30 consultas de fixtures con reglas parametrizadas siguen rechazadas con
-un mensaje que remite a `using`/`with`; no se les añadieron bindings.
+cuatro átomos, como comprobación, y conserva la línea `FOUR fusion`; un
+desacuerdo entre ambas es un error en toda compilación. Los evaluadores,
+`FourSession` y el oráculo de tests reciben un `GroundProgram`, que exige
+átomos ground (sin variables en argumentos ni tiempos; records, `none` y
+tiempos distintos se admiten). Las reglas con parámetros se instancian solo
+mediante `using`/`with`, con la resolución de bindings de las consultas
+residuales; no hay grounding automático sobre las constantes del módulo. Con
+ámbito, Horn observa las mismas instancias que FOUR. `steps` enumera hasta
+cuatro átomos y, por encima, responde solo con el modelo mínimo. Véase
+[FOUR con ámbito](executable-fixtures.md#four-con-ámbito-y-bindings-explícitos).
+
+Verificación en `src/experiments/four_least_model_tests.rs` y
+`src/experiments/four_scoped_tests.rs`:
+
+- las 44 consultas `fourFusion` de las trece fixtures: 13 se comparan con la
+  enumeración y coinciden, 1 (cinco átomos) solo tiene modelo mínimo y 30
+  siguen rechazadas por reglas con parámetros sin ámbito, con un mensaje que
+  remite a `using`/`with`; no se les añadieron bindings;
+- exhaustivo: todos los programas de hasta dos reglas sobre dos átomos con
+  signo (cuerpos `I`, un literal o el producto de dos), con todo conjunto de
+  premisas y todo objetivo literal, 117.184 casos; el modelo mínimo completo
+  es el meet de los modelos y la consecuencia coincide;
+- 3.000 programas ground al azar de hasta cuatro átomos y 150 de cinco o seis,
+  con cuerpos anidados, `I` y literales negativos, contra la enumeración;
+- monotonía de los ámbitos: añadir reglas nunca retira una consecuencia
+  (1.000 programas al azar);
+- ámbitos con reglas y con Programs, varias instancias de una regla mediante
+  los usos de un Program, records, `none` y dos tiempos, errores de parámetros
+  sin binding en la elaboración y coherencia de la línea Horn.
+
+No hay prueba mecanizada; el argumento de la observación anterior más estas
+comprobaciones finitas son la evidencia.
 
 ## Fuera de este inventario
 

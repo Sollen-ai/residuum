@@ -8,6 +8,7 @@ const tau : PropositionTime
 
 derived verb Notified(person : Person)
 derived verb Served(person : Person)
+derived verb Linked(a : Person, b : Person)
 
 // Being served implies being notified (antecedent <= consequent).
 rule service(person, t) =
@@ -15,6 +16,18 @@ rule service(person, t) =
 
 program Service(person : Person, t : PropositionTime) {
     use service { person = person, t = t }
+}
+
+// A link between two people requires the second one to be served.
+rule link(a, b, t) =
+    Linked(a, b) @ t <= Served(b) @ t
+
+// One rule, two instances: each use of a Program compiles to its own rule,
+// so its shared parameters can bind the same rule at different arguments.
+program Both(a : Person, b : Person, t : PropositionTime) {
+    use service { person = a, t = t }
+    use service { person = b, t = t }
+    use link { a = a, b = b, t = t }
 }
 
 // FOUR contraposition through a rule with parameters: Horn closure cannot
@@ -55,5 +68,20 @@ experiment program {
     with {
         program Service.person = alice,
         program Service.t = tau
+    }
+}
+
+// Contraposition through bob's instance of service, then link: five atoms,
+// so only the least model answers.
+experiment twoInstances {
+    premises {
+        ~Notified(bob) @ tau,
+    }
+    query fourFusion ~Linked(alice, bob) @ tau
+    using program Both
+    with {
+        program Both.a = alice,
+        program Both.b = bob,
+        program Both.t = tau
     }
 }

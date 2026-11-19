@@ -248,3 +248,63 @@ fn scoped_reports_print_their_scope_and_bindings() {
     );
     assert!(output.contains("  search scope: program Service\n"));
 }
+
+#[test]
+fn one_rule_gives_several_instances_through_the_uses_of_a_program() {
+    let m = load(FIXTURE);
+    let results = run_experiments(&m).unwrap();
+    let result = results
+        .iter()
+        .find(|r| r.experiment.name == "twoInstances")
+        .unwrap();
+    let four = result.four.as_ref().unwrap();
+    // service for alice and for bob, link, and their atoms: five atoms, so
+    // the bounded enumeration does not run and the meet of models is the oracle.
+    assert_eq!(four.least_model.atoms.len(), 5);
+    assert_eq!(four.enumeration, None);
+    assert!(four.entailed() && four.scoped && !result.horn_goal);
+    let program = GroundProgram::for_experiment(&m, &result.experiment).unwrap();
+    assert_eq!(
+        meet_of_models(&program),
+        (four.least_model.values.clone(), true)
+    );
+    let mut instances: Vec<_> = program.rules().iter().map(|r| r.name.as_str()).collect();
+    instances.sort();
+    assert_eq!(
+        instances,
+        vec!["Both::0::service", "Both::1::service", "Both::2::link"]
+    );
+}
+
+#[test]
+fn ground_records_none_and_other_times_are_ordinary_atoms() {
+    let m = load("examples/experiments/four_ground_values.res");
+    let results = run_experiments(&m).unwrap();
+    let four = results[0].four.as_ref().unwrap();
+    // The premise and the goal write the record fields in different orders;
+    // both are the same canonical atom as the bound instance, so two atoms.
+    assert_eq!(four.least_model.atoms.len(), 2);
+    assert!(four.entailed());
+    assert_eq!(four.enumeration.as_ref().map(|e| e.entailed), Some(true));
+    let program = GroundProgram::for_experiment(&m, &results[0].experiment).unwrap();
+    assert_eq!(meet_of_models(&program).0, four.least_model.values);
+    let times: std::collections::BTreeSet<_> = program
+        .atoms()
+        .iter()
+        .map(|a| a.proposition.time.clone())
+        .collect();
+    assert_eq!(times.len(), 2);
+}
+
+#[test]
+fn atoms_with_a_variable_are_rejected_with_the_atom() {
+    let m = load(FIXTURE);
+    let mut e = experiment(&m, "contraposition").clone();
+    e.query_options = Default::default();
+    e.goal.args[0] = Term::Var("someone".into());
+    let error = GroundProgram::from_ground_rules(&e, &[])
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("requires ground atoms"), "{error}");
+    assert!(error.contains("Served(someone)"), "{error}");
+}

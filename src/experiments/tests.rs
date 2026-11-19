@@ -180,12 +180,12 @@ fn fixture_runner_rejects_unbounded_or_unsupported_comparisons() {
             "query fourFusion ~P() @ tau",
             "query fourFusion ~P() @ sigma",
         );
-    assert!(
-        run_experiments(&parse_formal_to_typed(&times).unwrap())
-            .unwrap_err()
-            .to_string()
-            .contains("shared proposition time")
-    );
+    // A goal at another time is a separate atom that nothing constrains.
+    let results = run_experiments(&parse_formal_to_typed(&times).unwrap()).unwrap();
+    let four = results[0].four.as_ref().unwrap();
+    assert_eq!(four.least_model.atoms.len(), 3);
+    assert!(!four.entailed());
+    assert_eq!(four.enumeration.as_ref().map(|e| e.entailed), Some(false));
     let too_many = format!(
         "{FOUR}\nderived verb R()\nderived verb S()\nderived verb T()\nrule r() = P() @ tau <= R() @ tau\nrule s() = R() @ tau <= S() @ tau\nrule u() = S() @ tau <= T() @ tau\n"
     );

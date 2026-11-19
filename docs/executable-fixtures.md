@@ -140,23 +140,34 @@ instanciación. Un `false` solo dice que estas instancias no bastan:
 `otherInstance` instancia la regla para `bob` y no concluye nada sobre
 `alice`.
 
-Cada regla o RuleUse aporta una sola instancia: los bindings duplicados se
-rechazan, así que `service` para `alice` y para `bob` no caben en el mismo
-ámbito, y `rule r.x = c` fija el mismo valor en todos los usos de `r` dentro de
-un Program. `active` sigue sin admitirse con `fourFusion`. `steps` recorre la
-enumeración de las mismas instancias, hasta cuatro átomos, y termina con la
-misma línea `FOUR least model` que `query`.
+Una regla nombrada en `using rules { … }` aporta una instancia: los bindings
+duplicados se rechazan y `rule r.x = c` fija el mismo valor en todos los usos
+de `r`. Para varias instancias de una misma regla se usa un Program, porque
+cada uso compila a su propia regla. `twoInstances` instancia `service` para
+`alice` y para `bob` mediante `program Both` y encadena la contraposición por
+`link`; con cinco átomos, solo responde el modelo mínimo.
+
+Los átomos ground no se limitan a constantes:
+[four_ground_values.res](../examples/experiments/four_ground_values.res) usa un
+record, `none` y dos tiempos (`tau` y `after(tau)`). FOUR compara átomos por
+igualdad y nunca empareja patrones con ellos, así que cualquier argumento o
+tiempo sin variables es un átomo más. Los valores de los bindings y de las
+premisas usan la forma canónica de la elaboración: el record escrito con los
+campos en otro orden es el mismo átomo.
+
+`active` sigue sin admitirse con `fourFusion`. `steps` recorre la enumeración
+de las mismas instancias hasta cuatro átomos y termina con la misma línea
+`FOUR least model` que `query`; con más átomos indica
+`enumeration skipped: N ground atoms (at most 4)` y da solo esa línea.
 
 ## Alcance y ejecución segura
 
 `fourFusion` nombra explícitamente el modelo de la consulta, sin adoptarlo como
-semántica operacional general de M2. Exige argumentos constantes y un único
-tiempo común; sin ámbito explícito, además, reglas sin parámetros. La
-enumeración y `steps` siguen limitadas a cuatro átomos ground; el modelo
-mínimo no tiene ese límite. Esta
-última restricción evita confundir el matching actual de nombres temporales
-con un nuevo chequeo de constantes literales entre índices distintos. El matcher
-no se cambia en este incremento.
+semántica operacional general de M2. Exige átomos ground, sin variables en
+argumentos ni tiempos; sin ámbito explícito, además, reglas sin parámetros. La
+enumeración se limita a cuatro átomos ground; el modelo mínimo no tiene ese
+límite. El matcher no se cambia: FOUR no empareja patrones, y la línea `Horn`
+usa `close` sobre las mismas reglas ground.
 
 El modo residual exige dependencias acíclicas entre verbos, una condición
 suficiente de terminación para estas fixtures. FOUR admite ciclos ground dentro

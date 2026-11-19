@@ -9,13 +9,14 @@ use crate::typed::{Antecedent, Event, ExperimentQueryKind, HornClause, Polarity,
 const FOUR: &str = include_str!("../../examples/experiments/four_counterexample.res");
 
 /// Every source fixture that declares a fourFusion query.
-const FIXTURES: [&str; 12] = [
+const FIXTURES: [&str; 13] = [
     "examples/experiments/theory_bridge.res",
     "examples/experiments/theory_bridge_tensor.res",
     "examples/experiments/composition_domain.res",
     "examples/experiments/discrete_derivative.res",
     "examples/experiments/dynamic_incremental_programs.res",
     "examples/experiments/four_counterexample.res",
+    "examples/experiments/four_ground_values.res",
     "examples/experiments/four_scoped_bindings.res",
     "examples/experiments/legal_geometry/general.res",
     "examples/experiments/legal_geometry/identifiability_cases.res",
@@ -89,10 +90,10 @@ fn least_model_matches_enumeration_on_every_four_fixture() {
             compared,
             beyond_enumeration,
             by_reason("requires ground rules"),
-            by_reason("constant arguments"),
+            by_reason("ground atoms"),
             rejected.values().sum::<usize>()
         ),
-        (11, 0, 30, 1, 31),
+        (13, 1, 30, 0, 30),
         "{rejected:?}"
     );
 }
@@ -370,4 +371,90 @@ fn adding_rules_never_withdraws_an_entailment() {
     }
     // Some entailments appear only once more rules are in scope.
     assert!(gained > 50, "{gained}");
+}
+
+#[test]
+fn least_model_equals_the_meet_of_models_on_every_small_program() {
+    // Exhaustive, not random: two atoms with both signs; every rule whose body
+    // is I, one literal or the product of two literals (with repetition), with
+    // any literal as head; every program of at most two such rules; every set
+    // of premises. The whole least model must equal the meet of all models,
+    // and every literal goal must agree with the enumeration.
+    let module = parse_formal_to_typed(FOUR).unwrap();
+    let Some(Declaration::Experiment(template)) = module
+        .declarations
+        .iter()
+        .find(|d| matches!(d, Declaration::Experiment(_)))
+    else {
+        panic!("experiment");
+    };
+    let rule_template = rules_of(&module).remove(0);
+    let mut literals = Vec::new();
+    for verb in ["P", "Q"] {
+        for polarity in [Polarity::Positive, Polarity::EvidentialNot] {
+            let mut event = template.goal.clone();
+            event.verb = verb.to_string();
+            event.polarity = polarity;
+            literals.push(event);
+        }
+    }
+    let mut bodies = vec![Antecedent::Unit];
+    for (i, a) in literals.iter().enumerate() {
+        bodies.push(Antecedent::Event(a.clone()));
+        for b in &literals[i..] {
+            bodies.push(Antecedent::And(
+                Box::new(Antecedent::Event(a.clone())),
+                Box::new(Antecedent::Event(b.clone())),
+            ));
+        }
+    }
+    let mut rules = Vec::new();
+    for body in &bodies {
+        for head in &literals {
+            let mut rule = rule_template.clone();
+            rule.name = format!("r{}", rules.len());
+            rule.body = RuleBody::HornClause(HornClause {
+                antecedent: body.clone(),
+                consequent: head.clone(),
+            });
+            rules.push(rule);
+        }
+    }
+    assert_eq!(rules.len(), 60);
+    let mut programs = vec![Vec::new()];
+    for (i, a) in rules.iter().enumerate() {
+        programs.push(vec![a.clone()]);
+        for b in &rules[i + 1..] {
+            programs.push(vec![a.clone(), b.clone()]);
+        }
+    }
+    assert_eq!(programs.len(), 1 + 60 + 1770);
+    let mut checked = 0;
+    let mut entailed = 0;
+    for program_rules in &programs {
+        for premises in 0..1usize << literals.len() {
+            let mut experiment = template.clone();
+            experiment.input = (0..literals.len())
+                .filter(|i| premises & (1 << i) != 0)
+                .map(|i| literals[i].clone())
+                .collect();
+            for goal in &literals {
+                // The goal can add an atom the rules do not mention, so each
+                // goal is its own program, compared whole against the meet.
+                experiment.goal = goal.clone();
+                let program = GroundProgram::from_ground_rules(&experiment, program_rules).unwrap();
+                let least = four_least_model(&program);
+                let (meet, oracle) = meet_of_models(&program);
+                assert_eq!(
+                    (&least.values, least.entailed),
+                    (&meet, oracle),
+                    "{premises:b} {goal:?}: {program_rules:?}"
+                );
+                entailed += usize::from(oracle);
+                checked += 1;
+            }
+        }
+    }
+    assert_eq!(checked, 1831 * 16 * 4);
+    assert!(entailed > 0 && entailed < checked, "{entailed} / {checked}");
 }

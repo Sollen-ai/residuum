@@ -70,7 +70,9 @@ work, including intermediate products. Layered search has different allocation
 metrics/scheduling from depth-first search, so budget exhaustion need not occur
 at the same point. Errors are terminal and never produce truncated success.
 
-`FourSession` retains the original finite ground universe (at most four atoms).
+`FourSession` enumerates the finite ground universe of the query (at most four
+atoms); above that, `steps` reports `enumeration skipped` and answers with the
+least model.
 Each step filters candidate interpretations by one premise or rule, returning
 eliminated and surviving interpretation IDs. Two bits per sorted atom encode
 positive and negative support. Entailment remains None until every constraint
@@ -106,8 +108,7 @@ complete evaluation from a step limit. Residual requirements and FOUR entailment
 are displayed only after completion. `query` retains the legacy rejection of
 unscoped queries in Program-bearing modules; explicit scoped residual, active
 residual and fourFusion source queries can opt into those modules. FOUR steps
-enumerate at most four ground atoms and end with the same `FOUR least model`
-line as `query`. Defaults remain unsupported
+end with the same `FOUR least model` line as `query`. Defaults remain unsupported
 for residual queries. Active traces include original producers and guard metadata.
 Forward step sessions can observe bounded prefixes of cycles without computing
 an unbounded full closure. No flags execute State transformations.
