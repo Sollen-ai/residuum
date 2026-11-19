@@ -148,7 +148,7 @@ fn world(atoms: &[Event], mask: usize) -> BTreeMap<Event, Value> {
 /// Test oracle without the four-atom bound: the knowledge meet of every model
 /// found by enumeration, and whether the goal holds in all of them. Atoms in
 /// the order of [`FourLeastModel::atoms`]. Exponential; for small tests only.
-#[cfg(test)]
+#[cfg(all(test, family_experiments))]
 pub(super) fn meet_of_models(
     experiment: &Experiment,
     rules: &[Rule],
