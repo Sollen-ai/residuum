@@ -82,11 +82,14 @@ un barrido de todas las fixtures de `examples/`: 124 módulos y 685 evaluaciones
 (cada experimento con `close`, `IncrementalClosure` o
 `IncrementalProgramClosure` si el módulo tiene Programs, con activaciones, y
 `ForwardSession`, según apliquen) dan el mismo `Debug` que el barrido lineal y
-que el join de referencia (recuento del 2026-11-19). Quedan fuera, por el tiempo límite del runner
-con el barrido lineal, seis fixtures de carga: `peano_after`,
-`peano_multiplication`, `peano_polynomial_scenario`,
-`peano_polynomial_product_scenario` (su `partialProduct` se compara arriba),
-`program_incremental_scaling` y `program_proof_scaling`.
+que el join de referencia (recuento del 2026-11-19). Seis fixtures de carga
+superan con el barrido lineal el tiempo límite del runner local (15 s por
+test): `peano_after`, `peano_multiplication`, `peano_polynomial_scenario`,
+`peano_polynomial_product_scenario` (su `partialProduct` se compara también
+arriba), `program_incremental_scaling` y `program_proof_scaling`. Se comparan
+aparte en el test ignorado `argument_index_equals_linear_scan_on_heavy_fixtures`,
+que la integración continua ejecuta en modo release
+([ci.yml](../.github/workflows/ci.yml), paso *Heavy fixture sweeps*).
 Observado una vez, build de tests sin optimizar: sondeos 93 306 → 22 293,
 rechazos estructurales 81 277 → 10 264, `matching_ms` 632 → 248.
 
@@ -127,7 +130,9 @@ completos en actualizaciones de una semilla sobre los escenarios del producto.
 `rules_examined` pasó de 2 544 a 72 (reglas ordinarias) y de 18 221 a 3 696
 (cierre con programas).
 `src/derive/relevance_tests.rs` extiende la comparación a todas las fixtures
-de `examples/` salvo seis de carga (las mismas que `known_index_tests.rs`):
+de `examples/`; las seis de carga (las mismas que en `known_index_tests.rs`)
+están en el test ignorado `relevant_rules_keep_heavy_fixtures_equal_to_examining_every_rule`,
+que la integración continua ejecuta en modo release. El resto:
 248 experimentos comparados (recuento del 2026-11-19), con `IncrementalClosure` o
 `IncrementalProgramClosure` según el módulo, en un lote de varios eventos y
 evento por evento; otros 38, de módulos con Programs cuyo cierre no se puede

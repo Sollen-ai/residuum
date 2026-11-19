@@ -1511,6 +1511,9 @@ no adquiere esos límites. No uses esa invocación para las verificaciones local
 del proyecto. La única excepción es la integración continua
 ([.github/workflows/ci.yml](.github/workflows/ci.yml)), que llama a `cargo`
 directamente en las máquinas desechables de GitHub en cada push y pull request:
-comprueba el formato, que cada familia compile sin avisos y el binario release,
-ejecuta la suite completa con un hilo y exige que los informes versionados de
-`docs/legal-geometry` se reproduzcan sin diferencias.
+comprueba el formato, `clippy`, que cada familia compile sin avisos con la
+versión mínima de Rust (`rust-version` en `Cargo.toml`) y el binario release,
+ejecuta la suite completa con un hilo y, en modo release, los barridos de
+equivalencia sobre las seis fixtures de carga que el runner local omite, y exige
+que los informes versionados de `docs/legal-geometry` se reproduzcan sin
+diferencias.

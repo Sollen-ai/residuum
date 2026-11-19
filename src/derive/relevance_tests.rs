@@ -116,11 +116,17 @@ fn examples() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("examples")
 }
 
+fn heavy(path: &Path) -> bool {
+    SLOW.iter().any(|name| path.ends_with(name))
+}
+
 /// Split in two by directory so each half stays well inside the runner's
-/// per-test timeout; together they cover every fixture under `examples/`.
+/// per-test timeout; with the heavy sweep below they cover every fixture
+/// under `examples/`.
 #[test]
 fn relevant_rules_keep_experiment_fixtures_equal_to_examining_every_rule() {
-    let (compared, coverage) = sweep(|path| path.starts_with(examples().join("experiments")));
+    let (compared, coverage) =
+        sweep(|path| path.starts_with(examples().join("experiments")) && !heavy(path));
     assert!(compared > 150, "{compared}");
     assert!(
         coverage.residual > 0
@@ -133,9 +139,22 @@ fn relevant_rules_keep_experiment_fixtures_equal_to_examining_every_rule() {
 }
 #[test]
 fn relevant_rules_keep_other_example_fixtures_equal_to_examining_every_rule() {
-    let (compared, coverage) = sweep(|path| !path.starts_with(examples().join("experiments")));
+    let (compared, coverage) =
+        sweep(|path| !path.starts_with(examples().join("experiments")) && !heavy(path));
     assert!(
         compared > 50 && coverage.skipped > 0,
+        "{compared} {coverage:?}"
+    );
+}
+
+/// The six heavy workloads. CI runs this in release mode
+/// (.github/workflows/ci.yml).
+#[test]
+#[ignore = "heavy fixtures: run in CI with --release --ignored"]
+fn relevant_rules_keep_heavy_fixtures_equal_to_examining_every_rule() {
+    let (compared, coverage) = sweep(heavy);
+    assert!(
+        compared > 0 && coverage.skipped > 0,
         "{compared} {coverage:?}"
     );
 }
@@ -147,9 +166,6 @@ fn sweep(select: impl Fn(&Path) -> bool) -> (usize, Coverage) {
     let mut coverage = Coverage::default();
     let mut compared = 0;
     for path in &paths {
-        if SLOW.iter().any(|name| path.ends_with(name)) {
-            continue;
-        }
         let Ok(module) = crate::load_formal_module(path) else {
             continue;
         };

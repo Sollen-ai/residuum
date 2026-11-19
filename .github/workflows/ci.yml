@@ -1,6 +1,8 @@
-# Checks every push and pull request: formatting, every test family built
-# without warnings, the full suite, and that the committed reports under
-# docs/legal-geometry are reproduced byte for byte.
+# Checks every push and pull request: formatting, clippy, every test family
+# built without warnings on the minimum supported Rust (Cargo.toml
+# rust-version), the full suite, the heavy fixture sweeps in release mode, and
+# that the committed reports under docs/legal-geometry are reproduced byte for
+# byte.
 #
 # Locally, AGENTS.md requires scripts/test_safe.py (cgroup memory limit through
 # the user's systemd session). GitHub runners are disposable machines without
@@ -30,15 +32,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The minimum supported Rust: keep in step with rust-version in Cargo.toml.
       - name: Install Rust 1.87.0
         uses: dtolnay/rust-toolchain@1.87.0
         with:
-          components: rustfmt
+          components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
 
       - name: Formatting
         run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
 
       - name: Release binary
         run: cargo build --release --locked
@@ -68,6 +74,17 @@ jobs:
 
       - name: CLI tests
         run: cargo test --locked --bin residuum -- --test-threads=1
+
+      # The six heavy fixtures that the optimizer equivalence sweeps skip
+      # locally, where the runner allows 15 s per test. Release mode keeps
+      # them fast; --exact selects only these two ignored tests, never the
+      # paused CNL ones.
+      - name: Heavy fixture sweeps
+        run: >-
+          cargo test --locked --release --lib --
+          --ignored --exact --test-threads=1
+          derive::known_index_tests::argument_index_equals_linear_scan_on_heavy_fixtures
+          derive::relevance_tests::relevant_rules_keep_heavy_fixtures_equal_to_examining_every_rule
 
       - name: Committed reports are reproduced
         run: |

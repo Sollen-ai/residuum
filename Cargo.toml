@@ -2,6 +2,8 @@
 name = "residuum"
 version = "0.1.0"
 edition = "2024"
+# The minimum supported Rust, checked by CI (.github/workflows/ci.yml).
+rust-version = "1.87"
 
 [dependencies]
 chumsky = { version = "=0.9.3", default-features = false }

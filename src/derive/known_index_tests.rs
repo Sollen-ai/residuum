@@ -233,6 +233,9 @@ fn evaluate(module: &Module, seeds: &[Event]) -> Vec<String> {
     runs
 }
 
+/// Workloads too slow for the runner's per-test timeout under the linear
+/// scan. The product scenario's partialProduct is also compared with the
+/// linear scan in profile_tests.
 const SLOW: [&str; 6] = [
     "peano_after.res",
     "peano_multiplication.res",
@@ -242,17 +245,35 @@ const SLOW: [&str; 6] = [
     "program_proof_scaling.res",
 ];
 
+fn heavy(path: &Path) -> bool {
+    SLOW.iter().any(|name| path.ends_with(name))
+}
+
 /// Split in two by directory so each half stays well inside the runner's
-/// per-test timeout; together they cover every fixture under `examples/`.
+/// per-test timeout; with the heavy sweep below they cover every fixture
+/// under `examples/`.
 #[test]
 fn argument_index_equals_linear_scan_on_experiment_fixtures() {
-    let (modules, compared) = sweep(|path| path.starts_with(examples().join("experiments")));
+    let (modules, compared) =
+        sweep(|path| path.starts_with(examples().join("experiments")) && !heavy(path));
     assert!(modules > 50 && compared > 100, "{modules} / {compared}");
 }
 #[test]
 fn argument_index_equals_linear_scan_on_other_example_fixtures() {
-    let (modules, compared) = sweep(|path| !path.starts_with(examples().join("experiments")));
+    let (modules, compared) =
+        sweep(|path| !path.starts_with(examples().join("experiments")) && !heavy(path));
     assert!(modules > 30 && compared > 100, "{modules} / {compared}");
+}
+/// The six workloads the linear scan cannot finish within the local runner's
+/// per-test timeout. CI runs this in release mode (.github/workflows/ci.yml).
+#[test]
+#[ignore = "heavy fixtures: run in CI with --release --ignored"]
+fn argument_index_equals_linear_scan_on_heavy_fixtures() {
+    let (modules, compared) = sweep(heavy);
+    assert!(
+        modules == SLOW.len() && compared > 0,
+        "{modules} / {compared}"
+    );
 }
 
 fn examples() -> PathBuf {
@@ -265,12 +286,6 @@ fn sweep(select: impl Fn(&Path) -> bool) -> (usize, usize) {
     paths.retain(|path| select(path));
     let (mut modules, mut compared) = (0, 0);
     for path in &paths {
-        // Workloads too slow for the runner's per-test timeout under the
-        // linear scan. The product scenario's partialProduct is compared with
-        // the linear scan in profile_tests.
-        if SLOW.iter().any(|name| path.ends_with(name)) {
-            continue;
-        }
         let Ok(module) = crate::load_formal_module(path) else {
             continue;
         };
