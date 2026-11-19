@@ -10,12 +10,12 @@
 - Mantén 1324 MiB total (1 GiB + 300 MiB, autorizado por el propietario el
   2026-11-19), sin swap, un trabajo de Cargo y un hilo del harness. No eleves
   más los límites ni desactives los controles para conseguir un resultado verde.
-- Excepción autorizada por el propietario el 2026-11-19: el modo
-  `python3 scripts/test_safe.py --benchmark` puede compilar en release con un
-  timeout de 600 s (`BENCHMARK_COMPILE_TIMEOUT`). Mantiene los mismos límites
-  de memoria, sin swap, un trabajo y un hilo; el resto de compilaciones sigue
-  con 45 s. Los binarios anteriores a la subida de memoria se ejecutan bajo su
-  límite original de 1 GiB, más estricto.
+- Excepción autorizada por el propietario el 2026-11-19: en el modo
+  `python3 scripts/test_safe.py --benchmark`, sus dos compilaciones release
+  (HEAD y el commit base) pueden durar hasta 600 s (`BENCHMARK_COMPILE_TIMEOUT`).
+  Todos los demás límites y controles se mantienen, también en sus ejecuciones:
+  1324 MiB, freno en 1068 MiB, sin swap, crecimiento anormal, un trabajo, un hilo
+  y 15 s por ejecución. El resto de compilaciones sigue con 45 s.
 - El runner falla si no puede crear/verificar el cgroup. Resuelve el acceso a
   systemd mediante la aprobación del entorno; no uses una alternativa sin límites.
 - CNL está conservado y pausado como frontend. Sus tests `ignored` no son criterio
