@@ -2,9 +2,10 @@
 
 Inventario de 2026-10-29 (punto 12 añadido el 2026-11-01 e implementado el 2026-11-18), posterior a la rama `semi-naive-dedup-index`
 (índice en `IncrementalClosure`, deduplicación con `BTreeSet`, pivotes sin
-repetición y `new_by_derivative`). Este documento no modifica código ni
-contratos. Ordena trabajo posible; ninguna entrada está medida todavía y su
-impacto es una estimación por lectura del código, no un resultado.
+repetición y `new_by_derivative`). Ordena trabajo posible. El impacto de cada
+entrada es una estimación por lectura del código, salvo en las marcadas como
+aplicadas (§1, §2, §5 en parte, §9 y §12, 2026-11-18), que describen el cambio
+hecho, cómo se verificó y lo que se midió. Las demás siguen sin implementar.
 
 Cada entrada separa el problema observado, la propuesta, lo que debe
 conservarse y cómo verificarla. Salvo que se diga lo contrario, todas deben
