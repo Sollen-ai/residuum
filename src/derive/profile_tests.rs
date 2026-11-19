@@ -520,7 +520,9 @@ fn depth_first_delta_join_keeps_batch_updates_and_temporal_boundaries() {
         "forward_provenance.res",
         "owns_program.res",
     ];
-    let mut cases: Vec<(String, Module, Vec<Event>, Vec<Vec<Event>>)> = Vec::new();
+    // (fixture, module, base seeds, delta batches)
+    type Case = (String, Module, Vec<Event>, Vec<Vec<Event>>);
+    let mut cases: Vec<Case> = Vec::new();
     for file in fixtures {
         let module = load(file);
         let (base, delta) = (input(&module, "base"), input(&module, "delta"));
@@ -838,8 +840,8 @@ fn bounded_program_scaling_observes_work_without_changing_evaluation() {
         .count();
     // In multiplication, completed also observes nested addition invocations.
     assert!(completed >= requests);
-    if name.starts_with("proofs") {
-        let n: usize = name[6..].parse().unwrap();
+    if let Some(n) = name.strip_prefix("proofs") {
+        let n: usize = n.parse().unwrap();
         assert_eq!(
             (c.known.len(), c.derivations.len(), stats.activated),
             (2, n, n)

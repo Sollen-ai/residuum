@@ -248,6 +248,8 @@ pub fn query_active_program_residual_with_bindings<C: DerivationClock>(
 
 /// Restrict the original guarded search producers, retaining their guards.
 /// Certification still runs close_program over the unchanged original module.
+// One argument per independent query input, mirroring the unscoped API.
+#[allow(clippy::too_many_arguments)]
 pub fn query_active_program_residual_in_scope_with_bindings<C: DerivationClock>(
     module: &Module,
     scope: &HornQueryScope,
@@ -270,6 +272,7 @@ pub fn query_active_program_residual_in_scope_with_bindings<C: DerivationClock>(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn active_query<C: DerivationClock>(
     module: &Module,
     scope: Option<&HornQueryScope>,

@@ -347,6 +347,8 @@ fn empty_knowledge_projects_to_unknown_per_atom_not_logical_unit() {
     assert_ne!(Evidence::unit(), FALSE);
 }
 
+// Some checks read fields of constants; they document the value table.
+#[allow(clippy::assertions_on_constants)]
 #[test]
 fn positive_support_candidate_distinguishes_unit_unknown_and_truth_bottom() {
     // Candidate satisfaction only; this does not choose M2's semantics.

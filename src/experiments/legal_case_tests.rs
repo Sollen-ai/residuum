@@ -79,10 +79,12 @@ fn legal_case_fulfillment_and_patrimony_chain() {
         crate::formal::parse_formal_manual(SOURCE).unwrap()
     );
     let module = parse_formal_to_typed(SOURCE).unwrap();
-    assert!(!module.declarations.iter().any(|d| match d {
-        Declaration::Default(_) => true,
-        _ => false,
-    }));
+    assert!(
+        !module
+            .declarations
+            .iter()
+            .any(|d| matches!(d, Declaration::Default(_)))
+    );
     let effects: Vec<_> = module
         .declarations
         .iter()

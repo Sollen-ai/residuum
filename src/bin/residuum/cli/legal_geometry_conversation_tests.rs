@@ -53,7 +53,7 @@ struct Hypothesis {
 }
 impl Hypothesis {
     fn predict(&self, s: usize) -> bool {
-        self.theta.iter().any(|&b| b & s == b)
+        self.theta.iter().any(|&b| b & !s == 0)
     }
     fn family(&self) -> String {
         if self.theta.is_empty() {

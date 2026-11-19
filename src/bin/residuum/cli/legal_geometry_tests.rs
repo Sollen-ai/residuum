@@ -361,8 +361,8 @@ fn correspondence_and_typed_inventory() {
         m.declarations
             .iter()
             .filter(|d| {
-                !matches!(d, Declaration::Experiment(_))
-                    && !(d.name().starts_with('g') && matches!(d, Declaration::Const(_)))
+                !(matches!(d, Declaration::Experiment(_))
+                    || d.name().starts_with('g') && matches!(d, Declaration::Const(_)))
             })
             .map(|d| (d.name().to_owned(), d.clone()))
             .collect()

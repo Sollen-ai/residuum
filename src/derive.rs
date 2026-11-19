@@ -146,7 +146,7 @@ fn has_unbound_rule_parameter(
         .args
         .iter()
         .any(|term| term_has_unbound_parameter(term, &parameter_names, substitutions))
-        || time_has_unbound_parameter(&event.proposition.time, &parameter_names, substitutions)
+        || time_has_unbound_parameter(&event.proposition.time, substitutions)
 }
 
 fn term_has_unbound_parameter(
@@ -168,9 +168,10 @@ fn term_has_unbound_parameter(
     }
 }
 
+/// A time variable is always a parameter (constants are `TimeExpr::At`), so
+/// unlike terms no parameter-name check is needed.
 fn time_has_unbound_parameter(
     time: &TimeExpr,
-    parameter_names: &BTreeSet<&str>,
     substitutions: &BTreeMap<String, SubstitutionValue>,
 ) -> bool {
     match time {
@@ -179,7 +180,7 @@ fn time_has_unbound_parameter(
             .get(name)
             .and_then(SubstitutionValue::as_time)
             .is_none(),
-        TimeExpr::After(time) => time_has_unbound_parameter(time, parameter_names, substitutions),
+        TimeExpr::After(time) => time_has_unbound_parameter(time, substitutions),
     }
 }
 
@@ -629,6 +630,8 @@ fn match_event(
     }
 
     for (pattern, value) in pattern.args.iter().zip(&event.args) {
+        // Not `?`: test builds count the structural rejection before returning.
+        #[allow(clippy::question_mark)]
         if bind_term(pattern, value, parameters, substitutions).is_none() {
             #[cfg(test)]
             profile::structural_reject();

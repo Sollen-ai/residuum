@@ -93,6 +93,7 @@ fn state_header() -> String {
     "state\tmodel\tclosed_count\tbasis_count\tclosed_ids\textreme_ids\tgenerator_count\tclosed_events\textreme_events\n".into()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn certificates(
     m: &Module,
     name: &str,

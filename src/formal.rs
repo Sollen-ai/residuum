@@ -119,7 +119,6 @@ fn lexer() -> impl Parser<char, Vec<Token>, Error = Simple<char>> {
 
     // A repeated token always consumes its identifier/symbol before trivia.
     trivia
-        .clone()
         .ignore_then(
             choice((import_path, ident, symbols))
                 .then_ignore(trivia)
@@ -137,10 +136,10 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
     let ty = recursive(|ty| {
         let entity = choice((
             keyword("PropositionTime").to(Type::PropositionTime),
-            ident.clone().map(Type::Entity),
+            ident.map(Type::Entity),
         ));
         let set = keyword("Set")
-            .ignore_then(ident.clone())
+            .ignore_then(ident)
             .map(|name| Type::Set(Box::new(Type::Entity(name))));
 
         choice((set, entity))
@@ -156,16 +155,15 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
     });
 
     let field = ident
-        .clone()
         .then_ignore(just(Token::Colon))
         .then(ty.clone())
         .map(|(name, ty)| FormalField { name, ty });
 
     let entity = keyword("entity")
-        .ignore_then(ident.clone())
+        .ignore_then(ident)
         .then(
             just(Token::Subtype)
-                .ignore_then(ident.clone())
+                .ignore_then(ident)
                 .or_not()
                 .map(|supertype| supertype.into_iter().collect()),
         )
@@ -186,14 +184,13 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
         .boxed();
 
     let const_decl = keyword("const")
-        .ignore_then(ident.clone())
+        .ignore_then(ident)
         .then_ignore(just(Token::Colon))
         .then(ty.clone())
         .map(|(name, ty)| FormalDeclaration::Const(FormalConst { name, ty }))
         .boxed();
 
     let arg = ident
-        .clone()
         .then_ignore(just(Token::Colon))
         .then(ty.clone())
         .map(|(name, ty)| FormalArg { name, ty });
@@ -206,7 +203,6 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
 
     let term = recursive(|term| {
         let record_field = ident
-            .clone()
             .then_ignore(just(Token::Equal))
             .then(term.clone())
             .map(|(field, value)| SurfaceRecordFieldValue { field, value });
@@ -221,7 +217,6 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
                 argument: Box::new(argument),
             });
         let atomic = ident
-            .clone()
             .then(
                 record_field
                     .separated_by(just(Token::Comma))
@@ -243,13 +238,7 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
     });
 
     let field_access = ident
-        .clone()
-        .then(
-            just(Token::Dot)
-                .ignore_then(ident.clone())
-                .repeated()
-                .at_least(1),
-        )
+        .then(just(Token::Dot).ignore_then(ident).repeated().at_least(1))
         .map(|(base, path)| SurfaceFieldAccess { base, path });
 
     let state_operation = field_access
@@ -276,13 +265,13 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
         keyword("effect").to(SurfaceVerbKind::Effect),
     ))
     .then_ignore(keyword("verb"))
-    .then(ident.clone())
+    .then(ident)
     .then(args.clone())
     .then(just(Token::FatArrow).ignore_then(effect_body).or_not())
     .then(
         just(Token::Equal)
             .ignore_then(keyword("program"))
-            .ignore_then(ident.clone())
+            .ignore_then(ident)
             .or_not(),
     )
     .map(|((((kind, name), args), effect), program)| {
@@ -298,16 +287,14 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
 
     let time = just(Token::At)
         .ignore_then(choice((
-            keyword("after")
-                .ignore_then(ident.clone())
-                .map(SurfaceTime::After),
-            ident.clone().map(SurfaceTime::At),
+            keyword("after").ignore_then(ident).map(SurfaceTime::After),
+            ident.map(SurfaceTime::At),
         )))
         .or_not();
 
     let event = just(Token::Tilde)
         .or_not()
-        .then(ident.clone())
+        .then(ident)
         .then(
             term.clone()
                 .separated_by(just(Token::Comma))
@@ -349,12 +336,11 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
         });
 
     let rule_application = keyword("rule")
-        .ignore_then(ident.clone())
+        .ignore_then(ident)
         .then_ignore(just(Token::Equal))
-        .then(ident.clone())
+        .then(ident)
         .then(
             ident
-                .clone()
                 .separated_by(just(Token::Comma))
                 .allow_trailing()
                 .delimited_by(just(Token::LParen), just(Token::RParen)),
@@ -379,10 +365,9 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
     ));
 
     let horn_rule = keyword("rule")
-        .ignore_then(ident.clone())
+        .ignore_then(ident)
         .then(
             ident
-                .clone()
                 .separated_by(just(Token::Comma))
                 .allow_trailing()
                 .delimited_by(just(Token::LParen), just(Token::RParen)),
@@ -415,18 +400,18 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
 
     let default_body = choice((
         keyword("supernormal")
-            .ignore_then(ident.clone())
+            .ignore_then(ident)
             .map(|rule| (SurfaceDefaultBody::Supernormal { rule }, None)),
         keyword("exception")
-            .ignore_then(ident.clone())
+            .ignore_then(ident)
             .then_ignore(keyword("to"))
-            .then(ident.clone())
+            .then(ident)
             .then(keyword("when").ignore_then(antecedent.clone()).or_not())
             .map(|((rule, to), condition)| (SurfaceDefaultBody::Exception { rule, to }, condition)),
     ));
 
     let default = keyword("default")
-        .ignore_then(ident.clone())
+        .ignore_then(ident)
         .then_ignore(just(Token::Equal))
         .then(default_body)
         .then(
@@ -453,14 +438,13 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
             keyword("rules")
                 .ignore_then(
                     ident
-                        .clone()
                         .separated_by(just(Token::Comma))
                         .allow_trailing()
                         .delimited_by(just(Token::LBrace), just(Token::RBrace)),
                 )
                 .map(SurfaceQueryScope::Rules),
             keyword("program")
-                .ignore_then(ident.clone())
+                .ignore_then(ident)
                 .map(SurfaceQueryScope::Program),
         )))
         .boxed();
@@ -468,9 +452,9 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
         keyword("rule").to(BehaviorKind::Rule),
         keyword("program").to(BehaviorKind::Program),
     ))
-    .then(ident.clone())
+    .then(ident)
     .then_ignore(just(Token::Dot))
-    .then(ident.clone())
+    .then(ident)
     .then_ignore(just(Token::Equal))
     .then(term.clone())
     .map(|(((kind, name), parameter), value)| SurfaceQueryBinding {
@@ -509,18 +493,16 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
         })
         .boxed();
     let state_field = ident
-        .clone()
         .then_ignore(just(Token::Dot))
-        .then(ident.clone())
+        .then(ident)
         .then_ignore(just(Token::Equal))
         .then(choice((
             ident
-                .clone()
                 .separated_by(just(Token::Comma))
                 .allow_trailing()
                 .delimited_by(just(Token::LBrace), just(Token::RBrace))
                 .map(SurfaceStateValue::Set),
-            ident.clone().map(SurfaceStateValue::Reference),
+            ident.map(SurfaceStateValue::Reference),
         )))
         .map(|((object, field), value)| SurfaceStateField {
             object,
@@ -529,7 +511,7 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
         });
     let initial_state = keyword("state")
         .ignore_then(just(Token::At))
-        .ignore_then(ident.clone())
+        .ignore_then(ident)
         .then(
             state_field
                 .separated_by(just(Token::Comma))
@@ -539,7 +521,7 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
         .map(|(time, fields)| SurfaceInitialState { time, fields })
         .boxed();
     let experiment = keyword("experiment")
-        .ignore_then(ident.clone())
+        .ignore_then(ident)
         .then(
             choice((
                 keyword("seeds").to(ExperimentInputKind::Seeds),
@@ -577,12 +559,11 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
     // Each repeated use consumes `use`, a rule name and braces. Internal
     // binding separators are mandatory; only the trailing comma is optional.
     let binding = ident
-        .clone()
         .then_ignore(just(Token::Equal))
         .then(term)
         .map(|(field, value)| SurfaceRecordFieldValue { field, value });
     let rule_use = keyword("use")
-        .ignore_then(ident.clone())
+        .ignore_then(ident)
         .then(
             binding
                 .separated_by(just(Token::Comma))
@@ -592,7 +573,7 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
         .map(|(rule, bindings)| SurfaceRuleUse { rule, bindings })
         .boxed();
     let program_definition = keyword("program")
-        .ignore_then(ident.clone())
+        .ignore_then(ident)
         .then(args)
         .then(
             rule_use
@@ -608,12 +589,11 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
         })
         .boxed();
     let program_application = keyword("program")
-        .ignore_then(ident.clone())
+        .ignore_then(ident)
         .then_ignore(just(Token::Equal))
-        .then(ident.clone())
+        .then(ident)
         .then(
             ident
-                .clone()
                 .separated_by(just(Token::Comma))
                 .allow_trailing()
                 .delimited_by(just(Token::LParen), just(Token::RParen)),
@@ -631,7 +611,7 @@ fn formal_module_parser() -> impl Parser<Token, FormalModule, Error = Simple<Tok
     ));
 
     keyword("module")
-        .ignore_then(ident.clone())
+        .ignore_then(ident)
         .then(declaration.repeated())
         .then_ignore(end())
         .map(|(name, declarations)| FormalModule { name, declarations })

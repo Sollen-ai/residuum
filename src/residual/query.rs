@@ -34,13 +34,7 @@ pub(super) fn query_with_constraints(
         return Ok(Vec::new());
     };
     let scope = &rule.parameters;
-    let reduced = reduce(
-        &antecedent,
-        known,
-        &scope,
-        goal_bindings.clone(),
-        Vec::new(),
-    );
+    let reduced = reduce(&antecedent, known, scope, goal_bindings.clone(), Vec::new());
     // One complete justification suffices: this rule has no pending requirement.
     if !retain_unit
         && reduced
@@ -107,7 +101,7 @@ pub(super) fn match_goal(rule: &Rule, goal: &Event) -> Option<(Antecedent, Bindi
     let mut goal_bindings = Bindings::new();
     // Event equality is logical: an unresolved state interpretation must not
     // prevent this requirement from being resolved through another rule.
-    if !unify_event(&clause.consequent, goal, &scope, &mut goal_bindings)
+    if !unify_event(&clause.consequent, goal, scope, &mut goal_bindings)
         || substitute_event(&clause.consequent, &goal_bindings) != *goal
     {
         return None;

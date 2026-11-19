@@ -91,7 +91,7 @@ pub(crate) fn elaborate_formal_with_dependencies(
                 verb_sigs.insert(
                     verb.name.clone(),
                     VerbSig {
-                        kind: verb.kind.clone(),
+                        kind: verb.kind,
                         arg_types: verb.args.iter().map(|a| a.ty.clone()).collect(),
                     },
                 );

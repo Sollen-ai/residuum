@@ -67,7 +67,7 @@ fn four_empty_theory_and_finite_domain_restrictions_are_preserved() {
     e.input.clear();
     let mut s = FourSession::new(&e, &[]).unwrap();
     assert!(s.step().complete);
-    assert_eq!(s.result().unwrap().entailed, false);
+    assert!(!s.result().unwrap().entailed);
     let m = module("examples/experiments/residual_proof.res");
     assert!(
         FourSession::new(experiments(&m)[0], &rules(&m))

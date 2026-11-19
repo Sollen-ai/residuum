@@ -260,6 +260,9 @@ pub struct CnlModule {
     pub declarations: Vec<CnlDeclaration>,
 }
 
+// The CNL frontend is paused; boxing its variants would change its AST for no
+// runtime gain, since declarations are built once per parse.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CnlDeclaration {
     Entity(CnlEntity),

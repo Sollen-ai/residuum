@@ -484,8 +484,8 @@ fn finite_activation_observation_adjunction_is_scoped_and_requirements_have_alte
                 .copied()
                 .find(|&candidate| sufficient.iter().all(|&x| source_order[candidate][x]));
             if let Some(left) = least {
-                for x in 0..64 {
-                    assert_eq!(source_order[left][x], y & f[x] == y);
+                for (x, &fx) in f.iter().enumerate().take(64) {
+                    assert_eq!(source_order[left][x], y & fx == y);
                 }
             } else {
                 missing_lower.push(y);

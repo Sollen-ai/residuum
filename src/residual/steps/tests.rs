@@ -70,7 +70,7 @@ fn joins_cartesian_products_and_proof_multiplicity_match_existing_search() {
             Declaration::Rule(r) => Some(r),
             _ => None,
         })
-        .last()
+        .next_back()
         .map(|r| match &r.body {
             RuleBody::HornClause(c) => c.consequent.clone(),
             RuleBody::ResidualClause(c) => c.consequent.consequent.clone(),

@@ -29,7 +29,7 @@ fn family(theta: &[usize]) -> String {
 }
 
 fn predict(theta: &[usize], input: usize) -> bool {
-    theta.iter().any(|&b| b & input == b)
+    theta.iter().any(|&b| b & !input == 0)
 }
 
 // Enumerate antichains directly, not the power set of possible families.
@@ -487,9 +487,7 @@ fn recalcitrant_observations_filter_antichains_and_refine_hypothesis_partitions(
     let norm_id = s.families.iter().position(|h| h == &[5, 6]).unwrap();
     assert!(!s.remaining(3).contains(&norm_id));
     assert!(
-        s.families
-            .iter()
-            .all(|h| !(predict(h, 4) && !predict(h, 12))),
+        s.families.iter().all(|h| !predict(h, 4) || predict(h, 12)),
         "positive A and negative AP are impossible for any monotone hypothesis"
     );
     artifact(

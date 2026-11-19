@@ -220,7 +220,7 @@ fn generated_relational_rules_learn_from_historical_outcome_preserving_reference
     let mut survivors = Vec::new();
     for h in 0..64 {
         let theory = study.theory(h);
-        for i in 0..CASES.len() {
+        for (i, &case) in CASES.iter().enumerate() {
             let c = study.run(h, i);
             study.certify(h, i, &c);
             let yes = c.known.contains(&study.goal(i));
@@ -248,7 +248,7 @@ fn generated_relational_rules_learn_from_historical_outcome_preserving_reference
             }
             // A positive alternative is not an effective override of the literal title.
             assert_eq!(
-                c.known.contains(&experiment(&study.base, CASES[i]).goal),
+                c.known.contains(&experiment(&study.base, case).goal),
                 i != 5
             );
             writeln!(
@@ -256,7 +256,7 @@ fn generated_relational_rules_learn_from_historical_outcome_preserving_reference
                 "{}\t{}\t{}\t{yes}\t{}\ttrue\tnot_resolved_by_additive_Horn",
                 candidate_name(h),
                 label(h),
-                CASES[i],
+                case,
                 i != 5
             )
             .unwrap();
@@ -265,7 +265,7 @@ fn generated_relational_rules_learn_from_historical_outcome_preserving_reference
                     provenance,
                     "{}\t{}\t{:?}\t{:?}\t{:?}\t{:?}\t{:?}",
                     candidate_name(h),
-                    CASES[i],
+                    case,
                     d.event,
                     d.record,
                     theory.origin(&d.record.rule),

@@ -585,7 +585,7 @@ fn hypothetical_compliance_revisions_check_convex_geometry_and_counterexamples()
         )
         .unwrap();
     }
-    assert_eq!(anti_results["baseline"], true);
+    assert!(anti_results["baseline"]);
     let minimal = minimal_packages(&study);
     assert_eq!(
         minimal

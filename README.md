@@ -1498,7 +1498,9 @@ status, tiempo y pico RSS quedan en `target/test-diagnostics/`.
 
 Puedes repetir `--test` para seleccionar varios tests, usar `--binary PATH` para
 mantener un binario ya compilado, o usar `--compile-only`, `--fmt-check` y
-`--format` para separar las fases. `--test-target lib|cli` elige el target y
+`--format` para separar las fases. `--clippy` ejecuta `cargo clippy` sobre todos
+los targets con avisos como errores, como la integración continua, bajo los
+mismos límites que cualquier compilación. `--test-target lib|cli` elige el target y
 `--features=<familia,…>` compila solo esas familias de tests (`test-core`,
 `test-residual`, `test-experiments` en la biblioteca; `test-core`,
 `test-legal-geometry`, `test-legal-learning` en la CLI); sin `--features` se

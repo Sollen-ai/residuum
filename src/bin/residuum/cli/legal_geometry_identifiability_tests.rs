@@ -146,10 +146,10 @@ fn fixed_hypotheses_have_all_inclusion_minimal_discriminating_cases() {
             mixed_size_antichain |= minimal
                 .iter()
                 .any(|a| minimal.iter().any(|b| a.count_ones() != b.count_ones()));
-            for s in 0..difference.len() {
-                if difference[s] {
+            for (s, &differs) in difference.iter().enumerate() {
+                if differs {
                     assert!(
-                        minimal.iter().any(|&m| m & s == m),
+                        minimal.iter().any(|&m| m & !s == 0),
                         "all differences have a minimal witness below"
                     );
                 }

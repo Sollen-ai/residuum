@@ -219,8 +219,8 @@ impl IncrementalProgramClosure {
             let mut next = Vec::new();
             // Full initializations scan Known, so only delta evaluation is filtered.
             let ordinary_relevant = relevant_rules(&self.ordinary_headers, &frontier);
-            for index in 0..self.ordinary.len() {
-                if !initial && !ordinary_relevant[index] {
+            for (index, &relevant) in ordinary_relevant.iter().enumerate() {
+                if !initial && !relevant {
                     continue;
                 }
                 let rule = &self.ordinary[index];

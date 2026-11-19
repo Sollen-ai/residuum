@@ -176,6 +176,8 @@ def main():
     parser.add_argument('--compile-only', action='store_true')
     parser.add_argument('--fmt-check', action='store_true')
     parser.add_argument('--format', action='store_true')
+    parser.add_argument('--clippy', action='store_true',
+                        help='Run cargo clippy on every target with warnings as errors, as CI does')
     parser.add_argument('--fixture', type=Path, help='Run one source-defined Formal fixture with the bounded example runner')
     parser.add_argument('--cli', choices=('run', 'query', 'explain', 'execute'), help='Run one CLI command on --fixture under the same limits')
     parser.add_argument('--steps', type=int, help='Bounded stepwise CLI transitions (1..4096)')
@@ -211,6 +213,9 @@ def main():
         parser.error('--library requires --fixture and --incremental')
     if args.fixture and (args.test or args.binary or args.compile_only or args.fmt_check or args.format):
         parser.error('--fixture cannot be combined with test, binary, compile, or format options')
+    if args.clippy and (args.fixture or args.test or args.binary or args.compile_only or families
+                        or args.fmt_check or args.format or args.test_target != 'lib'):
+        parser.error('--clippy runs alone: it checks every target and family')
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
     report = ROOT / 'target' / 'test-diagnostics' / f'{stamp}-{os.getpid()}'
     report.mkdir(parents=True)
@@ -257,6 +262,12 @@ def main():
                 emit_output(report / f'{len(rows):02d}.output.txt', sys.stderr)
             raise
         emit_output(output, sys.stdout)
+        return 0
+    if args.clippy:
+        # Same cgroup, memory stop and compile timeout as any other compilation.
+        run_bounded(report, rows, 'compile', 'cargo clippy',
+                    ['cargo', 'clippy', '--offline', '--locked', '--all-targets', '--jobs', '1',
+                     '--message-format=short', '--', '-D', 'warnings'], 45)
         return 0
     if args.fmt_check or args.format:
         command = ['cargo', 'fmt', '--all'] + (['--check'] if args.fmt_check else [])
