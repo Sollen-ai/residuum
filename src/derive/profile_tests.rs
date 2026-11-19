@@ -388,6 +388,76 @@ fn depth_first_delta_join_keeps_incremental_updates() {
 }
 
 #[test]
+fn depth_first_delta_join_keeps_batch_updates_and_temporal_boundaries() {
+    // Batches put several events in the first frontier, so a match can have
+    // several frontier witnesses and the exclusion before the pivot is used.
+    // Every self-contained base/delta fixture, the temporal boundary one
+    // included (owns_consumer and protection* need a shared library), plus
+    // the product seeds in one batch and in two.
+    let fixtures = [
+        "dynamic_incremental_temporal_boundary.res",
+        "forward_incremental.res",
+        "forward_provenance.res",
+        "owns_program.res",
+    ];
+    let mut cases: Vec<(String, Module, Vec<Event>, Vec<Vec<Event>>)> = Vec::new();
+    for file in fixtures {
+        let module = load(file);
+        let (base, delta) = (input(&module, "base"), input(&module, "delta"));
+        cases.push((file.to_string(), module, base, vec![delta]));
+    }
+    let module = load("peano_polynomial_product_scenario.res");
+    for name in ["unitProduct", "gapsProduct", "partialProduct"] {
+        let seeds = input(&module, name);
+        let (third, half) = (seeds.len() / 3, seeds.len() / 2);
+        cases.push((
+            format!("{name} one batch"),
+            module.clone(),
+            seeds[..third].to_vec(),
+            vec![seeds[third..].to_vec()],
+        ));
+        cases.push((
+            format!("{name} two batches"),
+            module.clone(),
+            seeds[..third].to_vec(),
+            vec![seeds[third..half].to_vec(), seeds[half..].to_vec()],
+        ));
+    }
+    let mut multiple = 0;
+    for (name, module, base, batches) in &cases {
+        let rules = module
+            .declarations
+            .iter()
+            .filter_map(|d| match d {
+                Declaration::Rule(r) => Some(r.clone()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        let run = || {
+            let mut clock = Clock::default();
+            let mut ordinary = IncrementalClosure::new(base.clone(), &rules, &mut clock);
+            let mut programs =
+                IncrementalProgramClosure::new(base.clone(), module, &mut clock).unwrap();
+            let mut trace = String::new();
+            for batch in batches {
+                let a = ordinary.update(batch.clone(), &mut clock);
+                let b = programs.update(batch.clone(), &mut clock);
+                trace.push_str(&format!("{a:?}\n{b:?}\n"));
+            }
+            format!("{trace}{:?}\n{:?}", ordinary.closure(), programs.closure())
+        };
+        let expected = {
+            let _reference = profile::reference_join();
+            run()
+        };
+        assert_eq!(expected, run(), "{name}");
+        multiple += batches.iter().filter(|b| b.len() > 1).count();
+    }
+    // At least the nine product batches carry several events each.
+    assert!(multiple >= 9, "{multiple}");
+}
+
+#[test]
 fn indexed_known_preserves_negative_cycles_unit_and_new_justifications() {
     let module = load("discrete_derivative.res");
     let rules = module

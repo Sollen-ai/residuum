@@ -1,6 +1,7 @@
 //! The argument index never drops a candidate `match_event` accepts: a
 //! randomized check over every term shape and binding kind, and every example
-//! fixture through the four evaluators, compared with the linear scan.
+//! fixture through the four evaluators, compared with the linear scan and,
+//! for the depth-first join, with the breadth-first copying join.
 use super::*;
 use crate::typed::Type;
 use std::path::{Path, PathBuf};
@@ -95,9 +96,7 @@ fn event(random: &mut Random, terms: &[Term]) -> Event {
             Polarity::Positive
         },
         verb: ["v", "w"][random.below(2)].into(),
-        args: (0..arity)
-            .map(|_| terms[random.below(terms.len())].clone())
-            .collect(),
+        args: (0..arity).map(|_| terms[random.below(terms.len())].clone()).collect(),
         proposition: PropositionType {
             kind: crate::typed::PropositionKind::Prop,
             time: TimeExpr::At("t0".into()),
@@ -209,10 +208,7 @@ fn evaluate(module: &Module, seeds: &[Event]) -> Vec<String> {
         let delta = state.update(seeds[split..].to_vec(), &mut Clock::default());
         runs.push(format!("{:?} {delta:?}", state.closure()));
     } else {
-        runs.push(format!(
-            "{:?}",
-            close(seeds.to_vec(), &rules, &mut Clock::default())
-        ));
+        runs.push(format!("{:?}", close(seeds.to_vec(), &rules, &mut Clock::default())));
         let mut state =
             IncrementalClosure::new(seeds[..split].to_vec(), &rules, &mut Clock::default());
         let delta = state.update(seeds[split..].to_vec(), &mut Clock::default());
@@ -281,7 +277,25 @@ fn sweep(select: impl Fn(&Path) -> bool) -> (usize, usize) {
                 let _scan = profile::linear_scan();
                 evaluate(&module, &experiment.input)
             };
-            assert_eq!(indexed, linear, "{} {}", path.display(), experiment.name);
+            // The breadth-first copying join, on the argument index.
+            let copying = {
+                let _reference = profile::reference_join();
+                evaluate(&module, &experiment.input)
+            };
+            assert_eq!(
+                indexed,
+                copying,
+                "reference join: {} {}",
+                path.display(),
+                experiment.name
+            );
+            assert_eq!(
+                indexed,
+                linear,
+                "{} {}",
+                path.display(),
+                experiment.name
+            );
             compared += indexed.len();
         }
     }

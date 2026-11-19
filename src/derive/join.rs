@@ -60,10 +60,18 @@ fn binders(pattern: &Event, parameters: &[Arg]) -> Vec<String> {
 /// Matches `pattern` against `event` in place. On success returns the
 /// binders it added, to undo it; on failure the map is already restored.
 ///
-/// Every value in the map is canonical: `bind_typed` only inserts canonical
-/// values and every initial map is built through it. When `bind_typed` meets
-/// a binder that is already present it writes back an equal value, so undoing
-/// an attempt only removes the binders that were absent before it.
+/// Undoing an attempt only removes the binders that were absent before it.
+/// That restores the map: `bind_typed` inserts canonical values, and when it
+/// meets a binder that is already present it writes back the canonical form
+/// of an equal value. Values inserted during the join are canonical already,
+/// so the write-back is the same value. An initial value may not be (program
+/// activation bindings are canonicalized with the program source's parameter
+/// types, not the rule's); only a `PropositionTime` binder can then change
+/// representation, from a term to the equal time. Such a rewrite survives
+/// the undo, but is not observable: every complete match binds every binder
+/// of every atom, so the output holds the canonical form either way, and the
+/// argument index only reads values of non-time parameters, whose canonical
+/// form is the value itself.
 fn bind<'b>(
     pattern: &Event,
     event: &Event,
