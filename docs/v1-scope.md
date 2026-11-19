@@ -23,7 +23,8 @@ siendo `0.1.0`. No se publica un paquete ni se declara estabilidad general de AP
 
 El pipeline activo es Formal → SurfaceAST → TypedAST → derivation/runtime.
 CNL permanece conservado y pausado. El launcher y la verificación requieren
-Linux/cgroup v2 y systemd de usuario: 1 GiB total, sin swap y controles preventivos.
+Linux/cgroup v2 y systemd de usuario: 1324 MiB total (1 GiB en el tag `v1`;
+subido el 2026-11-19), sin swap y controles preventivos.
 
 ## Fuera de v1
 

@@ -103,8 +103,10 @@ y estos datos no permiten inferir una cota asintótica multivariable.
 El crecimiento observado sigue siendo superlineal al añadir solicitudes,
 incluso cuando no se producen candidatos duplicados. En las 25 solicitudes,
 matching ocupa una mediana de 69.247 ms de los 77.488 ms; deduplicación ocupa
-1.378 ms. El scheduler todavía recorre reglas activadas, y el índice por header
-no restringe por bindings de argumentos. Esta observación orienta futuras
+1.378 ms. El scheduler todavía recorría reglas activadas, y el índice por header
+no restringía por bindings de argumentos (resuelto el 2026-11-18; véase
+[semi-naive-pending-optimizations.md](semi-naive-pending-optimizations.md) §1 y
+§2). Esta observación orienta futuras
 investigaciones; aquí no se modifica ninguno de esos mecanismos.
 
 Los casos mínimos por debajo de un milisegundo son sensibles a ruido y al

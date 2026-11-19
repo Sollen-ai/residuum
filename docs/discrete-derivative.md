@@ -290,6 +290,10 @@ Este incremento no cambia la semántica ni el oráculo `close`.
 - `update` consulta Known y la frontera mediante `KnownIndex`, como
   `IncrementalProgramClosure`. El índice sólo filtra por verbo, polaridad y
   aridad; los matches, sus testigos y las estadísticas de pivotes no cambian.
+  (Desde el 2026-11-18 el Known de cierre usa además el índice por argumentos,
+  `update` omite las reglas sin encabezado en la frontera y el join es en
+  profundidad; véase [semi-naive-pending-optimizations.md](semi-naive-pending-optimizations.md)
+  §1, §2 y §5.)
 - En `match_delta_antecedents`, compartido por ambos evaluadores, las
   posiciones anteriores al pivote excluyen eventos de la frontera. Un match
   con varios testigos nuevos se produce una vez, en su primera posición de

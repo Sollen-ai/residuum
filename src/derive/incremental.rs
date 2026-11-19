@@ -17,7 +17,8 @@ pub struct IncrementalStats {
     /// Rules matched against a frontier, summed over rounds. Rules that share
     /// no antecedent header (verb, polarity, arity) with the round's frontier
     /// are skipped and not counted, so this depends on the frontier's headers
-    /// as well as on the number of rules and rounds.
+    /// as well as on the number of rules and rounds. Full initializations in
+    /// `IncrementalProgramClosure` examine and count every rule.
     pub rules_examined: usize,
     pub delta_pivot_matches: usize,
     pub full_matches: usize,
@@ -39,7 +40,8 @@ pub struct IncrementalClosure {
     rules: Vec<Rule>,
     closure: Closure,
     known_keys: BTreeSet<Event>,
-    /// Header index over `closure.known`; positions follow its order.
+    /// Argument index over `closure.known` (header buckets refined by ground
+    /// argument values); positions follow its order.
     index: KnownIndex,
     /// Antecedent headers per rule, to skip rules the frontier cannot reach.
     headers: RuleHeaders,

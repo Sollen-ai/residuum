@@ -79,7 +79,8 @@ verbos Effect. Exige dependencias acíclicas antes de calcular cualquier cierre,
 como condición suficiente de terminación. La biblioteca también se contrasta
 con ciclos finitos del mismo tiempo; no hay garantía de terminación para cadenas
 temporales infinitas como after(after(...)). Los controles del runner permanecen:
-1 GiB total, sin swap, un job, un hilo y timeouts separados.
+1324 MiB total (1 GiB hasta el 2026-11-19), sin swap, un job, un hilo y timeouts
+separados.
 
 Los tests comparan todos los pares de subconjuntos de dos seeds y todas sus
 segundas actualizaciones (64 secuencias), además de duplicados, vacío, provenance

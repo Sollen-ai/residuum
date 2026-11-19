@@ -263,7 +263,7 @@ python3 scripts/test_safe.py --test-target cli \
 python3 scripts/analyze_legal_geometry.py --render
 ```
 
-El runner ejecuta cada test en un proceso separado con 1 GiB, sin swap, un job
+El runner ejecuta cada test en un proceso separado con 1 GiB (límite de entonces), sin swap, un job
 de Cargo, un hilo y los límites temporales existentes. No se ejecutó la suite.
 Los tests están en `src/bin/residuum/cli/legal_geometry_extreme_tests.rs` y usan
 el `close_program` existente. El script Python sólo resume los TSV exportados,

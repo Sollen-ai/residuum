@@ -42,7 +42,9 @@ La consulta utiliza las seeds originales y se calcula un cierre separado para
 mostrar qué se deriva. No se afirman requisitos, no se mezclan los escenarios
 y no se ejecutan efectos ni se modifican snapshots.
 
-Los argumentos deben ser constantes declaradas con tipos compatibles. El
+Los argumentos deben ser términos ground de tipos compatibles: constantes
+declaradas, `none`, records o constructores (véase
+[four_ground_values.res](../examples/experiments/four_ground_values.res)). El
 índice se declara con `const tau : PropositionTime`. Tiempo sin declarar,
 argumentos desconocidos, aridad incorrecta o tipos incompatibles fallan durante
 elaboración. Las entradas `seeds` admiten exclusivamente verbos Seeded.
@@ -179,13 +181,14 @@ de `test_safe.py --fixture`. El resolver admite hasta 1 MiB sumando todos los
 archivos únicos del grafo de imports, incluidos raíz y comentarios, y conserva
 `MAX_MODULES = 64`. La cota de fuente es configuración de implementación; el tag
 `v1` permanece en 64 KiB. `test_safe.py --fixture` compila el ejemplo y lo ejecuta
-en fases y cgroups separados: 1 GiB total, sin swap, un
+en fases y cgroups separados: 1324 MiB total, sin swap, un
 trabajo de Cargo, timeout de compilación de 45 s y ejecución de 15 s. Conserva la
 detención por crecimiento anormal y cercanía al límite. `--fixture` no se combina
 con opciones de tests ni dispara la suite completa.
 
-Se verificaron seis tests nuevos y tres regresiones individualmente. Ambos
-programas también se ejecutaron desde sus archivos. El pico RSS fue 638 MiB al
+En la verificación original de ResidualProof y FourCounterexample se ejecutaron
+individualmente seis tests nuevos y tres regresiones, con el límite de 1 GiB de
+entonces. Ambos programas también se ejecutaron desde sus archivos. El pico RSS fue 638 MiB al
 compilar tests y aproximadamente 15 MiB al ejecutar las fixtures.
 
 El modo externo `--incremental`, documentado en

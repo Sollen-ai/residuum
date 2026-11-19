@@ -459,7 +459,7 @@ fn unscoped_active_and_empty_scoped_queries_delegate_without_changing_legacy_mod
         run_experiments(&legacy)
             .unwrap_err()
             .to_string()
-            .contains("Program currently supports forward execution")
+            .contains("needs an explicit `using` scope on every query")
     );
     let m = load("examples/experiments/residual_proof.res");
     let mut scoped = m.clone();

@@ -93,4 +93,6 @@ sí tiene consecuencia computacional directa.
 
 Esta nota no cambia la semántica Horn de `close`, ni la consulta residual, ni
 `FourEntailment`. Un evaluador con valores enriquecidos sería un modo nuevo con
-la enumeración actual como oráculo en el dominio pequeño.
+la enumeración actual como oráculo en el dominio pequeño. (Desde 2026-11-19 la
+consulta devuelve `FourResult`: decide el modelo mínimo y `FourEntailment`
+queda como comprobación por enumeración.)

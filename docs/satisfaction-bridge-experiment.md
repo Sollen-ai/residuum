@@ -157,6 +157,6 @@ L, entailment universal de la teoría ni satisfacción general de residuales.
 Antes de una migración o incrementalidad queda decidir cómo la teoría restringe
 valoraciones y qué relación exacta debe tener con la consecuencia operacional.
 
-Los siete tests pasan individualmente mediante `scripts/test_safe.py`, con 1 GiB
+Los siete tests pasan individualmente mediante `scripts/test_safe.py`, con 1 GiB (límite de entonces)
 total, sin swap y timeout. El test de cierre tarda aproximadamente 0,16 s y usa
 un pico RSS de 15,27 MiB; la compilación usa 581 MiB. No se ejecuta la suite completa.

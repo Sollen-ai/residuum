@@ -71,7 +71,7 @@ consistencia programable ni sintaxis de consultas. Esas extensiones tienen
 contratos propios; el harness prueba composición de los mecanismos existentes.
 
 Los tres escenarios se verifican individualmente, junto con regresiones de
-identidad lógica y runtime, usando el runner con 1 GiB total, sin swap y timeout:
+identidad lógica y runtime, usando el runner con 1 GiB (límite de entonces) total, sin swap y timeout:
 
 ```sh
 python3 scripts/test_safe.py \

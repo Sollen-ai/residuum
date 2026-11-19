@@ -437,7 +437,7 @@ define coordenadas ni distancias en K. Los imports vendor apuntan al checkout he
 por el encargo; para reproducir en otro equipo hacen falta esas fuentes con los
 SHA anteriores. El script rechaza fuentes distintas.
 
-Los siete tests pasan individualmente con 1 GiB, sin swap, un job de Cargo,
+Los siete tests pasan individualmente con 1 GiB (límite de entonces), sin swap, un job de Cargo,
 un hilo y los timeouts existentes. No se ejecutó la suite completa.
 La verificación final está en
 `target/test-diagnostics/20261009T233532352021Z-574764`:

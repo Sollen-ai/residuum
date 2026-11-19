@@ -217,7 +217,7 @@ No se ejecutó la suite completa.
 
 La [verificación](legal-geometry/conversation/verification.md) registra comandos,
 tiempos, memoria y logs. El [registro SHA-256](legal-geometry/conversation/input-sha256.txt)
-fija fuentes y entradas. Se mantiene 1 GiB total, sin swap, un trabajo de Cargo
+fija fuentes y entradas. Se mantiene 1 GiB (límite de entonces) total, sin swap, un trabajo de Cargo
 y un hilo. No hubo merge ni cambios a `main` o `v1`.
 
 Esta etapa demuestra selección explicable y detección de incompatibilidad

@@ -132,8 +132,10 @@ La regla ground pretendida no autoriza ese paso.
 El [unificador residual](../src/residual/query.rs#L188) sí exige igualdad literal
 cuando el nombre no está en el scope, y no hace ese match. Es una divergencia
 forward/backward, no la incompletitud esperada frente al entailment FOUR.
-El [runner FOUR](../src/experiments/four.rs) ya reconoce esta limitación y exige
-un único índice compartido; sus resultados no cubren este contraejemplo.
+En la fecha de esta auditoría el [runner FOUR](../src/experiments/four.rs)
+exigía un único índice compartido; sus resultados no cubrían este contraejemplo.
+Desde 2026-11-19 admite cualquier tiempo ground como átomo distinto y compara
+átomos por igualdad, sin emparejar tiempos.
 
 **Clasificación:** discrepancia de implementación/scope. El dominio confirmado
 debe excluir estos matches entre tiempos constantes distintos hasta corregirla.

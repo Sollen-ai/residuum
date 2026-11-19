@@ -231,10 +231,10 @@ familia. Es incompleta para Horn: aparecen consecuencias negativas adicionales.
 El control por soporte coincide con Horn, pero no permite identificar sin más
 sus reglas con desigualdades residuadas de verdad.
 
-Los cinco tests del experimento se ejecutan individualmente mediante
-`scripts/test_safe.py`, con 1 GiB total, swap deshabilitado y timeout. Cada test
-usa alrededor de 15 MiB RSS; las dos enumeraciones principales tardan menos de
-un segundo cada una. No se ejecuta la suite completa ni se amplía el lenguaje.
+Los cinco tests del experimento se ejecutaron individualmente mediante
+`scripts/test_safe.py`, con el límite de entonces de 1 GiB total, swap
+deshabilitado y timeout. Cada test usaba alrededor de 15 MiB RSS; las dos
+enumeraciones principales tardaban menos de un segundo cada una. No se ejecutó la suite completa ni se amplió el lenguaje.
 
 ## Evaluador ejecutable
 

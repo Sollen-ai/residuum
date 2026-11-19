@@ -97,7 +97,7 @@ source budgets and literal partition preservation. Comparisons include event
 kind, metadata, times, canonical substitutions, ordered antecedents, original
 producers and proof multiplicity, ignoring only independent derivedAt values.
 
-All runs retain 1 GiB cgroups, zero swap, one Cargo job and one harness thread.
+All runs retain 1 GiB (the then-current limit) cgroups, zero swap, one Cargo job and one harness thread.
 No full suite or ignored CNL tests ran. This is focused integration verification,
 not a claim that every historical regression was rerun.
 

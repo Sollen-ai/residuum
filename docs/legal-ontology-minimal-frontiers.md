@@ -267,7 +267,7 @@ python3 scripts/analyze_legal_geometry.py --render
 ```
 
 Pasaron dos tests nuevos y una regresión, en procesos individuales limitados.
-No se ejecutó la suite completa. El runner conserva 1 GiB, sin swap, un trabajo
+No se ejecutó la suite completa. El runner conserva 1 GiB (límite de entonces), sin swap, un trabajo
 de Cargo, un hilo y sus timeouts. La compilación inicial consumió 426.55 MiB RSS.
 La última ampliación de la comprobación de dispute se recompiló con 359.75 MiB.
 

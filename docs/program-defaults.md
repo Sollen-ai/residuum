@@ -152,7 +152,7 @@ cinco regresiones de selección/cierre/extracción modular y tres comprobaciones
 de β, elaboración inválida e imports pasivos. La regresión de extracción compara
 los dieciséis escenarios monotónicos con el baseline.
 
-Toda compilación y ejecución usa scripts/test_safe.py, con 1 GiB, sin swap,
+Toda compilación y ejecución usa scripts/test_safe.py, con 1 GiB (límite de entonces), sin swap,
 un trabajo y un hilo, más sus límites preventivos. Se verifican tests individuales
 del target CLI, no la suite completa ni el target de tests de biblioteca.
 

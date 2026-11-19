@@ -11,7 +11,10 @@ test-only profiling remains, and its delta matcher is not indexed here.
 
 ## Implementation and scope
 
-`src/derive/known_index.rs` stores an append-only index of Known positions:
+`src/derive/known_index.rs` stores an append-only index of Known positions
+(the header layout this experiment introduced; since 2026-11-18 the closure's
+Known also refines each bucket by ground argument values, see
+[semi-naive-pending-optimizations.md](semi-naive-pending-optimizations.md) §1):
 
 ```text
 verb -> (polarity, arity) -> ordered positions in Known

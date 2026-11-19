@@ -293,7 +293,7 @@ Los tests regeneran en `target/legal-geometry/`:
 - `revision-anti-exchange-counterexamples.tsv`: testigos con eventos y bases completas.
 - `hypothetical-compliance-supports.res`: candidatos exportados para inspección.
 
-Se usa únicamente `scripts/test_safe.py`, con 1 GiB, sin swap, un trabajo de
+Se usa únicamente `scripts/test_safe.py`, con 1 GiB (límite de entonces), sin swap, un trabajo de
 Cargo y un hilo; sin suite completa. Los nombres individuales están en
 `src/bin/residuum/cli/legal_geometry_region_revision_tests.rs`.
 Las pruebas anteriores de fronteras y antiintercambio se mantienen como regresiones.

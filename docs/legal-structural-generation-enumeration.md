@@ -261,7 +261,7 @@ cli::tests::legal_geometry::structural_generation::structural_examples_distingui
 
 La última ejecución de cada prueba y los recursos del runner se conservan en
 [verification.json](legal-geometry/structural-generation/verification.json).
-Se mantienen 1 GiB total, sin swap, un trabajo de Cargo, un hilo del harness y
+Se mantienen 1 GiB (límite de entonces) total, sin swap, un trabajo de Cargo, un hilo del harness y
 los límites de tiempo. No se ejecuta la suite completa. Tras la interrupción se
 leyeron los resultados finalizados; no se atribuye un éxito a una ejecución
 pendiente. Se repitió únicamente la prueba de ejemplos tras corregir la

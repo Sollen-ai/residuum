@@ -321,7 +321,7 @@ impl Compiler<'_> {
         let index = self
             .atoms
             .binary_search(&key(event))
-            .expect("prepared atom");
+            .expect("atom of the ground program");
         let p = positive_component == (event.polarity == Polarity::Positive);
         2 * index + usize::from(!p)
     }

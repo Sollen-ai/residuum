@@ -253,7 +253,7 @@ Los SHA-256 siguen siendo los de las fuentes de referencia:
 | vendor/legal_patrimonial.res | `f7daf4d5eb937a7fde8534dba5618acc50d5aaa5b05ff86c9656892eb3a03fbf` |
 
 Compilación y ejecuciones individuales mediante `scripts/test_safe.py`, con
-1 GiB, sin swap, un trabajo y un hilo, timeout de test de 15 segundos.
+1 GiB (límite de entonces), sin swap, un trabajo y un hilo, timeout de test de 15 segundos.
 No se ejecuta la suite completa. Se incluye la regresión de los dos tests de
 identificabilidad anteriores. [Registro de los cuatro tests](legal-geometry/observability/verification.md):
 todos pasan individualmente; el mayor tiempo es 1,8688 s y el mayor pico RSS

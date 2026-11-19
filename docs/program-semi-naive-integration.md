@@ -128,7 +128,9 @@ Producto pequeño, ambos evaluadores terminaron y coincidieron exactamente:
 
 Son observaciones de una ejecución, no cotas generales ni una promesa de
 aceleración. Todavía se recorren reglas/activaciones en cada ronda; no se
-añadió un nuevo índice de reglas ni una política de deduplicación.
+añadió un nuevo índice de reglas ni una política de deduplicación. (Desde el
+2026-11-18 `update` omite las reglas sin encabezado en la frontera; véase
+[semi-naive-pending-optimizations.md](semi-naive-pending-optimizations.md) §2.)
 
 Producto mayor `principalProduct`:
 

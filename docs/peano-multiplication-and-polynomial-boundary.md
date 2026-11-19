@@ -183,7 +183,7 @@ Only individual tests were selected; no full suite was run.
   the concurrent/partial-application test took 1.180 seconds. Peak test RSS remained
   at or below approximately 15.50 MiB.
 - Initial test compilation passed at approximately 281.42 MiB reported peak RSS.
-- The runner retains 1 GiB total memory, no swap, one Cargo job, one harness thread,
+- The runner retains 1 GiB (the then-current limit) total memory, no swap, one Cargo job, one harness thread,
   timeouts and preventive stopping. No limits or controls were changed.
 
 Together these are seven new selected tests and three unchanged addition tests.

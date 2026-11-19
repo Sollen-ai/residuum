@@ -1498,9 +1498,19 @@ status, tiempo y pico RSS quedan en `target/test-diagnostics/`.
 
 Puedes repetir `--test` para seleccionar varios tests, usar `--binary PATH` para
 mantener un binario ya compilado, o usar `--compile-only`, `--fmt-check` y
-`--format` para separar las fases. Sin `--test`, ejecuta todos los tests activos
-individualmente; esa opción debe respetar la autorización vigente del usuario.
+`--format` para separar las fases. `--test-target lib|cli` elige el target y
+`--features=<familia,…>` compila solo esas familias de tests (`test-core`,
+`test-residual`, `test-experiments` en la biblioteca; `test-core`,
+`test-legal-geometry`, `test-legal-learning` en la CLI); sin `--features` se
+compilan todas ([docs/compile-cost-optimizations.md](docs/compile-cost-optimizations.md)).
+Sin `--test`, ejecuta todos los tests activos individualmente; esa opción debe
+respetar la autorización vigente del usuario.
 
 El runner limita sus propios procesos; una invocación directa de `cargo test`
-no adquiere esos límites. No uses esa invocación para las verificaciones del
-proyecto.
+no adquiere esos límites. No uses esa invocación para las verificaciones locales
+del proyecto. La única excepción es la integración continua
+([.github/workflows/ci.yml](.github/workflows/ci.yml)), que llama a `cargo`
+directamente en las máquinas desechables de GitHub en cada push y pull request:
+comprueba el formato, que cada familia compile sin avisos y el binario release,
+ejecuta la suite completa con un hilo y exige que los informes versionados de
+`docs/legal-geometry` se reproduzcan sin diferencias.

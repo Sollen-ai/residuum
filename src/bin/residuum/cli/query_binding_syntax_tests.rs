@@ -66,7 +66,7 @@ fn forward_commands_ignore_query_constraints_and_legacy_query_errors_stay_explic
         execute_module(Command::Query, &legacy)
             .unwrap_err()
             .to_string()
-            .contains("Program currently supports forward execution")
+            .contains("needs an explicit `using` scope on every query")
     );
     let malformed = source.replace("using program P", "using program Missing");
     assert!(

@@ -208,7 +208,7 @@ semántica en esta etapa.
 Pasaron dos tests **individuales** con `python3 scripts/test_safe.py`:
 0,2450 s / 15,37 MiB RSS y 0,7120 s / 15,42 MiB RSS.
 Compilación separada: 2,9598 s / 360,84 MiB RSS, un trabajo de Cargo,
-`CARGO_PROFILE_TEST_DEBUG=0`. Se mantienen 1 GiB, sin swap, un hilo y los timeouts;
+`CARGO_PROFILE_TEST_DEBUG=0`. Se mantienen 1 GiB (límite de entonces), sin swap, un hilo y los timeouts;
 no hay suite completa, cambio de presupuesto ni ejecución de binarios fuera del runner.
 
 Los controles usan sólo construcciones existentes. No se modifica el conjunto de

@@ -102,7 +102,7 @@ inventa evidencia histórica. No ejecuta State ni modifica la semántica del mot
 
 ## Verificación limitada
 
-Toda compilación y ejecución usa `python3 scripts/test_safe.py`: 1 GiB total,
+Toda compilación y ejecución usa `python3 scripts/test_safe.py`: 1 GiB (límite de entonces) total,
 sin swap, un trabajo de Cargo, un hilo del harness y los mismos controles
 preventivos y timeouts. La suite completa se ejecuta por separado para los
 targets CLI y biblioteca; cada test se ejecuta en un proceso limitado propio.

@@ -684,7 +684,8 @@ interfaces, Contract y ProgramVerb como construcciones quedan fuera de este
 contrato monotónico. Los defaults experimentales ya conservados no se borran ni
 se consideran parte de sus garantías.
 
-La verificación futura sigue usando `scripts/test_safe.py`: 1 GiB total, sin swap,
+La verificación futura sigue usando `scripts/test_safe.py`: 1324 MiB total desde
+el 2026-11-19 (antes 1 GiB), sin swap,
 un job de Cargo, un hilo y timeouts. Los controles de proceso contienen una
 ejecución; no prueban terminación matemática ni amplían el alcance de las pruebas.
 Esta consolidación es documental: se comprobaron referencias locales y formato

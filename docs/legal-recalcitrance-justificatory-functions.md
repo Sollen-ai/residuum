@@ -359,7 +359,7 @@ jurídicamente adecuada.
 El [verificador experimental](../src/bin/residuum/cli/legal_geometry_recalcitrance_tests.rs)
 contiene tres tests individuales: filtrado y particiones; cierres y provenance;
 geometría y contraste independiente. Se compila y ejecuta exclusivamente con
-`scripts/test_safe.py`, conservando 1 GiB total, sin swap, un job y un hilo.
+`scripts/test_safe.py`, conservando 1 GiB (límite de entonces) total, sin swap, un job y un hilo.
 
 Los [resultados de verificación](legal-geometry/recalcitrance/verification.md)
 registran tiempos, memoria y logs; el

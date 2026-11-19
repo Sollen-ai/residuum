@@ -117,14 +117,18 @@ recursive search reports remaining typed parameters instead of enumerating
 values or discarding unsupported selected rules. The local Rust API can still
 return those pending parameters explicitly.
 
-Legacy residual and FOUR queries use their original runner paths. In particular,
-the old rejection of unscoped residual/FOUR queries in Program-bearing modules
-is retained, even in a source file also containing configured queries. To query
+Legacy residual queries use their original runner path; every fourFusion query,
+scoped or not, is evaluated through `GroundProgram::for_experiment`. The old
+rejection of unscoped residual/FOUR queries in Program-bearing modules is
+retained, even in a source file also containing configured queries. To query
 such a module, every local experiment used by `query` must explicitly opt into
-scoped residual or active residual mode. Imported experiments are still stripped
-by the existing module loader.
+scoped residual, active residual or scoped fourFusion mode. Imported experiments
+are still stripped by the existing module loader.
 
-FOUR queries do not accept these residual clauses or active mode. Defaults remain
+Since 2026-11-19 FOUR queries accept `using`/`with`, with the same scope
+selection and binding validation but without the residual goal preflight; every
+parameter that a scoped rule body mentions must be bound. They do not accept
+active mode. See [FOUR con ámbito](executable-fixtures.md#four-con-ámbito-y-bindings-explícitos). Defaults remain
 unsupported for residual search. The source experiment runner keeps its existing
 conservative acyclic termination checks: scoped Horn observation checks its
 selected rules, while active certification checks original module rules and
@@ -162,6 +166,10 @@ active traces certify against the original module, including activation guards.
 An incomplete trace reports a frontier rather than a certified requirement.
 
 ## Reuse audit
+
+Line numbers are as of 2026-10-14 and have since moved. fourFusion options now
+go to `validate_four_query_options`, which shares `resolve_scoped_bindings` with
+the residual path.
 
 | New component | Existing component reused | Actual call path | New logic and why it is necessary |
 |---|---|---|---|

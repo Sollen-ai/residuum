@@ -152,7 +152,7 @@ fn experiment_parser_requires_progress_and_internal_commas() {
 }
 
 #[test]
-fn fixture_runner_rejects_unbounded_or_unsupported_comparisons() {
+fn fixture_runner_rejects_cycles_and_unscoped_parameters_and_accepts_other_times_and_more_atoms() {
     let cyclic = format!(
         "{RESIDUAL}\nrule repeat(subject, object, recipient, t) = give(subject, object, recipient) @ t <= give(subject, object, recipient) @ after t\n"
     );

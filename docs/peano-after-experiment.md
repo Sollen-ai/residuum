@@ -67,7 +67,7 @@ Three selected CLI-target Rust tests invoke existing APIs under `test_safe.py`:
    in the CLI. The computation above uses the existing core API in a bounded test
    process, not `residuum run`.
 
-The runner retains 1 GiB total, no swap, one Cargo job, one harness thread,
+The runner retains 1 GiB (the then-current limit) total, no swap, one Cargo job, one harness thread,
 timeout and preventive memory stops. Only these selected tests are authorized;
 no full-suite run was made for this experiment. Rust supplies the independent
 expected-number oracle and verifies results; it supplies no calculation rules,

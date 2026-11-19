@@ -191,7 +191,7 @@ fn antecedent(atoms: &[Event], random: &mut Random, depth: usize) -> Antecedent 
 
 #[test]
 fn least_model_matches_enumeration_on_random_ground_programs() {
-    // Templates from the fixture: four atoms with constant arguments and one time.
+    // Templates from the fixture: four nullary atoms at one time.
     let base = format!("{FOUR}\nderived verb R()\nderived verb S()\n");
     let module = parse_formal_to_typed(&base).unwrap();
     let Some(Declaration::Experiment(template)) = module

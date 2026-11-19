@@ -179,7 +179,7 @@ Tres tests individuales verifican:
    igualdad al invertir los seeds, ignorando únicamente `derivedAt` entre ejecuciones;
    conservación de la oposición explícita sobre finalidad.
 
-Todos usan `scripts/test_safe.py`, 1 GiB, sin swap y ejecución individual.
+Todos usan `scripts/test_safe.py`, 1 GiB (límite de entonces), sin swap y ejecución individual.
 Las cifras y comandos están en [verification.md](legal-geometry/riggs/verification.md).
 Los resultados completos están en [el directorio de artefactos](legal-geometry/riggs/).
 

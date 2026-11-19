@@ -177,7 +177,7 @@ source budget. Only indentation of new files was reduced; the original loader
 limit, original fixtures and module-count limit were preserved.
 
 The final tests use `python3 scripts/test_safe.py --test-target cli --test NAME`,
-with a separate process per test. They preserve 1 GiB total, no swap, one Cargo
+with a separate process per test. They preserve 1 GiB (the then-current limit) total, no swap, one Cargo
 job, one harness thread and the existing timeouts/preventive stop threshold.
 No full suite was requested or executed.
 

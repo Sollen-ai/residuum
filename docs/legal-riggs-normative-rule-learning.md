@@ -311,7 +311,7 @@ RiggsSuccessionReference. Earl y Gray y sus fuentes se conservan como contraste
 en los artefactos; no son las únicas formas de antecedente del catálogo.
 
 Cuatro tests nuevos y dos regresiones individuales pasan mediante
-`scripts/test_safe.py`, con 1 GiB, swap 0, un trabajo y un hilo. Los comandos,
+`scripts/test_safe.py`, con 1 GiB (límite de entonces), swap 0, un trabajo y un hilo. Los comandos,
 incidencias de compilación y consumos están en
 [verification.md](legal-geometry/riggs-rule-learning/verification.md).
 El verificador está en

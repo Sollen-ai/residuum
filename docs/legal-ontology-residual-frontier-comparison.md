@@ -205,7 +205,7 @@ python3 scripts/analyze_legal_geometry.py --render
 
 Pasaron ambos tests individuales. Los tests comprueban también los errores
 esperados: su resultado verde no implica que el query pueda cubrir la ontología.
-No se ejecutó la suite completa. Se conservan 1 GiB, sin swap, un job de Cargo,
+No se ejecutó la suite completa. Se conservan 1 GiB (límite de entonces), sin swap, un job de Cargo,
 un hilo y los límites temporales del runner, además de los límites de búsqueda
 residual por defecto.
 

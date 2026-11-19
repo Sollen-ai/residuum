@@ -4,9 +4,10 @@ Inventario de 2026-11-01. Complementa
 [residual-compilation-cost.md](residual-compilation-cost.md), que fijó el
 presupuesto de verificación, y lo corrige en un punto: el pico de memoria al
 compilar es memoria de trabajo del compilador, no caché de archivos. Este
-documento mide, ordena palancas y registra la única aplicada: `debug = 0` en
-el perfil `test` de `Cargo.toml`. No modifica el runner, sus límites ni sus
-controles.
+documento mide, ordena palancas y registra las dos aplicadas: `debug = 0` en
+el perfil `test` de `Cargo.toml` (2026-11-01) y las familias de tests tras
+features de Cargo (2026-11-18), que añadieron `--features` al runner. Los
+límites del runner se subieron aparte el 2026-11-19 (véase abajo).
 
 ## Qué problema es y a quién afecta
 
@@ -37,7 +38,7 @@ se añade.
 | Biblioteca sin tests | 15 263 |
 | Tests de la biblioteca (`cfg(test)`, incluidos 3 700 inline en `lib.rs`) | ≈ 14 100 |
 | Código de la CLI | 1 347 |
-| Tests de la CLI, 26 módulos bajo `cli.rs:225` | 21 791 |
+| Tests de la CLI, 26 módulos bajo `cli.rs` | 21 791 |
 | Total | 52 549 |
 
 Dos de cada tres líneas son tests. El crate de tests de la CLI es un 94 % tests.
@@ -188,9 +189,14 @@ Tras integrar las optimizaciones semi-naive (rama `integration/optimizations`,
 los valores por defecto del runner, desde cero, fueron: biblioteca sin
 features 723, `test-core` 539, `test-residual` 632, `test-experiments` 653;
 CLI sin features 708, `test-core` 482, `test-legal-geometry` 624,
-`test-legal-learning` 594. Tests activos tras la integración: biblioteca 314
-(`test-core` 167, `test-residual` 240, `test-experiments` 241); CLI 195
-(`test-core` 122, `test-legal-geometry` 174, `test-legal-learning` 143). La
+`test-legal-learning` 594. Estos picos se midieron en el commit bdc4e5d. Tests
+activos entonces: biblioteca 314 (`test-core` 167, `test-residual` 240,
+`test-experiments` 241); CLI 195 (`test-core` 122, `test-legal-geometry` 174,
+`test-legal-learning` 143). Al cierre de la sesión (rama
+`feat/four-scoped-bindings`, 2026-11-19) son biblioteca 327 (`test-experiments`
+254, por los tests de FOUR con ámbito) y CLI 196 (`test-core` 123, por
+`limit_tests`; `test-legal-geometry` 175, `test-legal-learning` 144); los picos
+no se volvieron a medir desde cero. La
 biblioteca sin features quedaba a 45 MiB del freno
 de 768 entonces vigente, y una recompilación incremental de `test-experiments`
 llegó a 763. Por eso se subieron los límites 300 MiB (freno 1068); con ellos

@@ -24,6 +24,6 @@ Eleven named tests passed individually through `python3 scripts/test_safe.py`:
 `target/test-diagnostics/20261014T165416011272Z-1587190`. These cover synchronous
 T/activation timing, the derivative, incremental/profile provenance, residual
 alternatives, active certification, supplied bindings and legacy validation.
-Limits remain 1 GiB, zero swap, one Cargo job and one harness thread. The full
+Limits remain 1 GiB (the then-current limit), zero swap, one Cargo job and one harness thread. The full
 suite was not run. Main integration separately reruns compatibility and source
 composition checks after resolving the merge.

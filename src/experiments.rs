@@ -140,7 +140,7 @@ pub fn run_experiments(module: &Module) -> Result<Vec<ExperimentResult>, Error> 
         && (experiments.is_empty() || experiments.iter().any(|e| e.query_options.is_legacy()))
     {
         return Err(Error::new(
-            "Program currently supports forward execution; residual/FOUR experiment integration is not implemented",
+            "a module with Program needs an explicit `using` scope on every query (residual, active residual or fourFusion); unscoped queries over Program members are not implemented",
         ));
     }
     if module

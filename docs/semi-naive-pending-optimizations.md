@@ -36,7 +36,7 @@ incrementales; `new_by_derivative` ya ofrece una base construida por derivada.
 
 ## 1. Índice por argumentos ya ligados
 
-**Problema.** `KnownIndex` agrupa sólo por verbo, polaridad y aridad. En
+**Problema (estado anterior al 2026-11-18).** `KnownIndex` agrupa sólo por verbo, polaridad y aridad. En
 `present(x) & motive(x)`, con `x` ya ligado por el pivote, el join recorre
 todos los `motive(...)` y llama a `match_event` con cada uno.
 
@@ -78,10 +78,11 @@ semilla fija: `candidates_bound` contiene, en orden de Known, todo evento que
 `match_event` acepta, con constantes, `None`, records, constructores,
 parámetros de entidad, opcionales y temporales, variables que no son
 parámetros, ligaduras no ground o mal tipadas y eventos no ground en Known. Y
-un barrido de todas las fixtures de `examples/`: 122 módulos y 280
-experimentos, con `close` e `IncrementalClosure` (o `IncrementalProgramClosure`
-si el módulo tiene Programs, con activaciones) y `ForwardSession`, dan el mismo
-`Debug` que el barrido lineal. Quedan fuera, por el tiempo límite del runner
+un barrido de todas las fixtures de `examples/`: 124 módulos y 685 evaluaciones
+(cada experimento con `close`, `IncrementalClosure` o
+`IncrementalProgramClosure` si el módulo tiene Programs, con activaciones, y
+`ForwardSession`, según apliquen) dan el mismo `Debug` que el barrido lineal y
+que el join de referencia (recuento del 2026-11-19). Quedan fuera, por el tiempo límite del runner
 con el barrido lineal, seis fixtures de carga: `peano_after`,
 `peano_multiplication`, `peano_polynomial_scenario`,
 `peano_polynomial_product_scenario` (su `partialProduct` se compara arriba),
@@ -91,7 +92,7 @@ rechazos estructurales 81 277 → 10 264, `matching_ms` 632 → 248.
 
 ## 2. Mapa verbo → reglas relevantes
 
-**Problema.** Cada ronda de `update` examina todas las reglas
+**Problema (estado anterior al 2026-11-18).** Cada ronda de `update` examina todas las reglas
 (`rules_examined`), aunque ningún evento de la frontera tenga un verbo que
 aparezca en sus antecedentes.
 
@@ -127,7 +128,7 @@ completos en actualizaciones de una semilla sobre los escenarios del producto.
 (cierre con programas).
 `src/derive/relevance_tests.rs` extiende la comparación a todas las fixtures
 de `examples/` salvo seis de carga (las mismas que `known_index_tests.rs`):
-243 experimentos comparados, con `IncrementalClosure` o
+248 experimentos comparados (recuento del 2026-11-19), con `IncrementalClosure` o
 `IncrementalProgramClosure` según el módulo, en un lote de varios eventos y
 evento por evento; otros 38, de módulos con Programs cuyo cierre no se puede
 construir (`IncrementalProgramClosure::new` falla), no se cuentan. El filtro se
@@ -180,7 +181,7 @@ con ciclos (`program_incremental_cycles.res`).
 
 ## 5. Menos copias en el join
 
-**Problema.** Por cada candidato se clonan `bindings` (`BTreeMap`) y el vector
+**Problema (estado anterior al 2026-11-18).** Por cada candidato se clonan `bindings` (`BTreeMap`) y el vector
 de testigos, y los testigos son `Event` completos.
 
 **Propuesta.** Testigos como posiciones en Known (`usize`) durante el join,
@@ -401,11 +402,11 @@ forward se beneficia sin duplicar su contrato.
 
 ## 12. Consecuencia FOUR por modelo menos informado
 
-**Problema.** `experiments/four.rs` decide `fourFusion` enumerando las
-\(4^n\) interpretaciones de los átomos ground y conservando las que satisfacen
-premisas y reglas. Por eso la enumeración se limitaba a cuatro átomos.
-`FourSession` refina por pasos eliminando mundos, pero recorre el mismo
-universo. (Estado antes del 2026-11-18; véase **Integrado** al final.)
+**Problema (estado anterior al 2026-11-18).** `experiments/four.rs` decidía
+`fourFusion` enumerando las \(4^n\) interpretaciones de los átomos ground y
+conservando las que satisfacen premisas y reglas. Por eso la enumeración se
+limitaba a cuatro átomos. `FourSession` refinaba por pasos eliminando mundos,
+pero recorría el mismo universo. Véase **Integrado** al final.
 
 **Observación.** Cada valor es un par de bits `Value { p, n }`. Con la
 semántica de `four.rs`, todas las condiciones de modelo son cláusulas Horn
@@ -455,10 +456,10 @@ representación como producto que Cabrer y Priestley obtienen como consecuencia
 de una dualidad natural por *piggyback* sobre Priestley. El algoritmo no la
 necesita.
 
-**Conservar.** `FourEntailment.entailed` debe coincidir. `models` e
-`interpretations` cuentan mundos y no se obtienen del modelo mínimo; un
-evaluador nuevo debería ofrecerlo como modo aparte, con la enumeración como
-oráculo en el dominio pequeño.
+**Conservar.** La consecuencia debe coincidir con `FourEntailment.entailed`.
+`models` e `interpretations` cuentan mundos y no se obtienen del modelo mínimo;
+por eso `FourResult` decide con `least_model` y conserva la enumeración como
+`enumeration: Option<FourEntailment>` hasta cuatro átomos.
 
 **Verificado (experimento finito, no prueba formal).**
 [scripts/four_least_model_check.py](../scripts/four_least_model_check.py)
@@ -466,8 +467,8 @@ copia `tensor` y `le` de `four.rs` y genera 5.000 programas ground al azar de
 hasta tres átomos, con conjunciones anidadas, `I` y literales negativos. En
 todos, el meet \(\le_k\) de los modelos es modelo, y la enumeración, el modelo
 mínimo y la propagación compilada dan la misma consecuencia. No ejecuta código
-Rust: falta un test que compare un evaluador Rust contra `entailment` en las
-fixtures existentes.
+Rust; la comparación del evaluador Rust contra la enumeración en las fixtures
+está en los tests citados en **Integrado**.
 
 **Aplicado (2026-11-18).** `experiments::four_least_model` compila las
 cláusulas anteriores sobre los bits \((p_i, n_i)\) y calcula el modelo

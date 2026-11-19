@@ -8,9 +8,9 @@ entorno temporales, no una nueva configuración persistente del proyecto.
 ## Qué estaba configurado
 
 test_safe.py ya pasa `--jobs 1` a Cargo. Los tests se ejecutan individualmente
-con `--test-threads=1`, en cgroups separados. Se conservan 1 GiB total,
-sin swap, detención preventiva en 768 MiB, 45 segundos para compilación y
-15 segundos por test. `CARGO_BUILD_JOBS=1` se añadió explícitamente durante el
+con `--test-threads=1`, en cgroups separados. Se conservaban 1 GiB total,
+sin swap, detención preventiva en 768 MiB (valores de entonces; hoy 1324 y
+1068 MiB), 45 segundos para compilación y 15 segundos por test. `CARGO_BUILD_JOBS=1` se añadió explícitamente durante el
 diagnóstico, sin ampliar el paralelismo permitido.
 
 Los artefactos Cargo anteriores muestran debuginfo=2, opt_level=0,

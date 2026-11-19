@@ -133,7 +133,7 @@ fn render(
                 .any(|d| matches!(d, Declaration::Experiment(_))))
     {
         return Err(Error::new(
-            "Program currently supports forward execution; residual/FOUR experiment integration is not implemented",
+            "a module with Program needs an explicit `using` scope on every query (residual, active residual or fourFusion); unscoped queries over Program members are not implemented",
         ));
     }
     if command == Command::Query && defaults {

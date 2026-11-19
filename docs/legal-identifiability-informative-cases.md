@@ -237,7 +237,7 @@ ordenados, sustituciones, multiplicidad y módulos de origen. Se omite sólo
 testigos. Módulos originales e inputs permanecen intactos; no se ejecuta State.
 
 Compilación y tests individuales sólo mediante `python3 scripts/test_safe.py`,
-1 GiB, sin swap, un trabajo de Cargo y un hilo. No se corre la suite completa ni
+1 GiB (límite de entonces), sin swap, un trabajo de Cargo y un hilo. No se corre la suite completa ni
 se modifica el presupuesto. El runner y la prueba de regresión de dependencias
 se registran en `verification.tsv`.
 

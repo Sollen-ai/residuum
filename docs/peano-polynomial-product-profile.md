@@ -43,8 +43,10 @@ The phases are disjoint at the measured level:
 Rounds, clause evaluations, activated rule instances, generated candidates,
 duplicate candidates, exact provenance equality comparisons and event matching
 probes are counted. Header rejections mean a mismatch in verb, polarity or arity,
-before structural argument/time matching. The matcher currently clones the
-substitution map before this rejection; the profile counts attempts, not the
+before structural argument/time matching. At the time of this profile the matcher
+cloned the substitution map before this rejection (since 2026-11-18 the
+depth-first join binds and undoes in place; see
+[semi-naive-pending-optimizations.md](semi-naive-pending-optimizations.md) §5); the profile counts attempts, not the
 number or cost of individual clones.
 
 One activated rule instance is not necessarily one Program activation: a single

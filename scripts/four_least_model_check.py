@@ -4,7 +4,8 @@
 Copies the Value semantics of src/experiments/four.rs (tensor and the truth
 order used by clauses) and compares, on small random ground programs:
 
-1. brute-force entailment over all 4^n interpretations, as four.rs does;
+1. brute-force entailment over all 4^n interpretations, as the reference
+   enumeration (`entailment`) in four.rs does up to four atoms;
 2. the knowledge-meet of all models (checked to be a model itself);
 3. the compiled Horn propagation described in
    docs/semi-naive-pending-optimizations.md, section 12.
