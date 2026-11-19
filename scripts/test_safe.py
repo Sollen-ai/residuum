@@ -16,6 +16,11 @@ import time
 
 ROOT = Path(__file__).resolve().parent.parent
 TEST_FAMILIES = {'test-core', 'test-residual', 'test-experiments', 'test-legal-geometry', 'test-legal-learning'}
+# Families that gate tests in each target; test-core belongs to both.
+TARGET_FAMILIES = {
+    'lib': {'test-core', 'test-residual', 'test-experiments'},
+    'cli': {'test-core', 'test-legal-geometry', 'test-legal-learning'},
+}
 MIB = 1024 * 1024
 MEMORY_LIMIT = 1024 * MIB
 STOP_MEMORY = 768 * MIB
@@ -187,6 +192,9 @@ def main():
         parser.error(f'unknown test families: {", ".join(unknown)}')
     if families and (args.fixture or args.binary or args.fmt_check or args.format):
         parser.error('--features only selects test families for compilation')
+    foreign = sorted(set(families) - TARGET_FAMILIES[args.test_target])
+    if foreign:
+        parser.error(f'test families not in --test-target {args.test_target}: {", ".join(foreign)}')
     if args.test_target != 'lib' and (args.fixture or args.fmt_check or args.format):
         parser.error('--test-target is only for test compilation/execution')
     if args.cli and (not args.fixture or args.forward or args.incremental or args.library):
