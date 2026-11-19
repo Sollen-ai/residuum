@@ -11,6 +11,10 @@ El pipeline activo es:
 Formal → SurfaceAST → TypedAST → derivation/runtime
 ```
 
+La [referencia del lenguaje](docs/language-reference.md) enumera cada
+construcción de los ficheros `.res` con un ejemplo, su significado y la orden
+que la evalúa; un test comprueba que todos sus ejemplos se elaboran.
+
 La [primera teoría experimental de la geometría inferencial](docs/inferential-geometry-experimental-theory.md)
 reúne los estudios de clausura jurídica, bases extremas, fronteras mínimas e
 identificabilidad mediante particiones. Distingue teoremas condicionados,

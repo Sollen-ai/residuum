@@ -50,6 +50,9 @@ mod legal_abduction_tests;
 #[cfg(test)]
 mod monotonic_regression_tests;
 
+#[cfg(test)]
+mod language_reference_tests;
+
 pub fn parse_formal_to_typed(source: &str) -> Result<Module, Error> {
     elaborate_formal(parse_formal(source)?)
 }
