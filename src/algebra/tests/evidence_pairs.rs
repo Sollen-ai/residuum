@@ -86,6 +86,8 @@ pub(crate) const FUSION_VALUES: [Fusion; 4] =
     [Fusion(FALSE), Fusion(UNKNOWN), Fusion(BOTH), Fusion(TRUE)];
 
 impl Fusion {
+    // Only the experiments family uses it; a family build without it must not warn.
+    #[cfg_attr(not(family_experiments), allow(dead_code))]
     pub(crate) fn label(self) -> &'static str {
         match self.0 {
             UNKNOWN => "U",

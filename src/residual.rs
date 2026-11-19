@@ -30,7 +30,7 @@ pub use program::{
     query_program_residual_with_abducibles,
 };
 
-#[cfg(test)]
+#[cfg(all(test, family_residual))]
 mod tests;
 
 /// Preserve the lambda while transforming (A & B <= C) into (A <= B multimap C).

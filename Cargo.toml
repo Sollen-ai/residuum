@@ -11,3 +11,14 @@ chumsky = { version = "=0.9.3", default-features = false }
 # runner. Medido en docs/compile-cost-optimizations.md.
 [profile.test]
 debug = 0
+
+# Familias de tests. Sin ninguna, se compilan todos los tests como antes. Con
+# una o más, sólo esas familias más el núcleo, para que cada binario de tests
+# quede lejos del freno del runner (docs/compile-cost-optimizations.md, palanca 2).
+[features]
+test-families = []
+test-core = ["test-families"]
+test-residual = ["test-families"]
+test-experiments = ["test-families"]
+test-legal-geometry = ["test-families"]
+test-legal-learning = ["test-families"]

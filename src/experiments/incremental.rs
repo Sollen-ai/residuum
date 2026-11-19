@@ -136,5 +136,5 @@ pub fn render_incremental(result: &IncrementalExperimentResult) -> String {
     )
 }
 
-#[cfg(test)]
+#[cfg(all(test, family_experiments))]
 mod tests;

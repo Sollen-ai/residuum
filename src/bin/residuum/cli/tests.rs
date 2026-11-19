@@ -1,5 +1,6 @@
 use super::*;
 
+#[cfg(any(family_legal_geometry, family_legal_learning))]
 #[path = "legal_geometry_tests.rs"]
 mod legal_geometry;
 
@@ -48,6 +49,7 @@ mod modules;
 #[path = "extraction_tests.rs"]
 mod extraction;
 
+#[cfg(family_legal_geometry)]
 #[path = "legal_partition_tests.rs"]
 mod legal_partition;
 

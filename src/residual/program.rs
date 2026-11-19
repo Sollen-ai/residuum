@@ -7,8 +7,8 @@ use super::engine;
 use crate::derive::instantiate_from_witness;
 use crate::elab::Error;
 use crate::typed::{
-    Antecedent, Declaration, Event, Module, Polarity, PropositionKind, Rule, RuleRef, Substitution,
-    Verb, VerbKind,
+    Antecedent, Event, Module, Polarity, PropositionKind, Rule, RuleRef, Substitution, Verb,
+    VerbKind,
 };
 
 /// A declared admissible kind of seed hypothesis, including explicit polarity.
@@ -382,5 +382,5 @@ impl Search<'_> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, family_residual))]
 mod tests;

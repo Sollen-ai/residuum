@@ -10,7 +10,7 @@ use crate::elab::Error;
 use crate::programs::{compile_program, program_rule_origin, shared_parameter};
 use crate::typed::*;
 
-#[cfg(test)]
+#[cfg(all(test, family_residual))]
 mod tests;
 
 /// A grounded activation condition used by a search step. This is not an Event
