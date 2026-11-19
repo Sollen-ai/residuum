@@ -10,10 +10,13 @@ controles.
 
 ## Qué problema es y a quién afecta
 
-`scripts/test_safe.py` compila y ejecuta dentro de un cgroup de 1 GiB sin swap,
-con un trabajo de Cargo y `CPUQuota=100%`. Además detiene preventivamente
-cualquier etapa cuyo cgroup alcance `STOP_MEMORY`, 768 MiB. Ése es el tope
-efectivo.
+`scripts/test_safe.py` compila y ejecuta dentro de un cgroup de 1324 MiB sin
+swap, con un trabajo de Cargo y `CPUQuota=100%`. Además detiene preventivamente
+cualquier etapa cuyo cgroup alcance `STOP_MEMORY`, 1068 MiB. Ése es el tope
+efectivo. Hasta el 2026-11-19 los valores eran 1 GiB y 768 MiB; el propietario
+los subió 300 MiB porque la compilación de tests de la biblioteca rozaba el
+freno. Las cifras de este documento se midieron con los valores anteriores y
+se comparan con 768.
 
 Ejecutar un programa `.res` no está afectado. La vía `--fixture x.res --cli run`
 compila el binario `residuum` con `cargo build`, sin código de tests, en menos de

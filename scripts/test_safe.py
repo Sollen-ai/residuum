@@ -22,8 +22,10 @@ TARGET_FAMILIES = {
     'cli': {'test-core', 'test-legal-geometry', 'test-legal-learning'},
 }
 MIB = 1024 * 1024
-MEMORY_LIMIT = 1024 * MIB
-STOP_MEMORY = 768 * MIB
+# Raised by 300 MiB on 2026-11-19 by the owner (was 1024 / 768): the library
+# test build peaks near 723 MiB from scratch. The 256 MiB stop margin is kept.
+MEMORY_LIMIT = 1324 * MIB
+STOP_MEMORY = 1068 * MIB
 
 
 def group_path():
@@ -109,7 +111,7 @@ def run_bounded(report, rows, stage, name, command, timeout, diagnostics=None):
     (report / f'{index:02d}.request.json').write_text(json.dumps(request, indent=2) + '\n')
     unit = f'residuum-safe-{os.getpid()}-{index}'
     scope = ['/usr/bin/systemd-run', '--user', '--scope', '--quiet', f'--unit={unit}',
-             '--property=MemoryMax=1G', '--property=MemorySwapMax=0',
+             f'--property=MemoryMax={MEMORY_LIMIT}', '--property=MemorySwapMax=0',
              '--property=CPUQuota=100%', sys.executable, str(Path(__file__).resolve()),
              '--worker', str(report), str(index)]
     with (report / f'{index:02d}.scope.txt').open('w') as output:
