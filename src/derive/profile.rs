@@ -237,3 +237,15 @@ pub(super) fn structural_reject() {
         STRUCTURAL_REJECTS.with(|c| c.set(c.get() + 1));
     }
 }
+// Test-only: frontier events the depth-first delta join skipped at positions
+// before the pivot (the dA·B ∪ A_old·dB split). Counted whether or not a
+// profiling session is active; read and reset with `take_fresh_exclusions`.
+thread_local! {
+    static FRESH_EXCLUSIONS: Cell<u64> = const { Cell::new(0) };
+}
+pub(super) fn fresh_exclusion() {
+    FRESH_EXCLUSIONS.with(|c| c.set(c.get() + 1));
+}
+pub(super) fn take_fresh_exclusions() -> u64 {
+    FRESH_EXCLUSIONS.with(|c| c.replace(0))
+}

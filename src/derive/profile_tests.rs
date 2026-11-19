@@ -423,7 +423,7 @@ fn depth_first_delta_join_keeps_batch_updates_and_temporal_boundaries() {
             vec![seeds[third..half].to_vec(), seeds[half..].to_vec()],
         ));
     }
-    let mut multiple = 0;
+    let (mut multiple, mut exclusions) = (0, 0);
     for (name, module, base, batches) in &cases {
         let rules = module
             .declarations
@@ -450,11 +450,17 @@ fn depth_first_delta_join_keeps_batch_updates_and_temporal_boundaries() {
             let _reference = profile::reference_join();
             run()
         };
-        assert_eq!(expected, run(), "{name}");
+        profile::take_fresh_exclusions();
+        let actual = run();
+        exclusions += profile::take_fresh_exclusions();
+        assert_eq!(expected, actual, "{name}");
         multiple += batches.iter().filter(|b| b.len() > 1).count();
     }
     // At least the nine product batches carry several events each.
     assert!(multiple >= 9, "{multiple}");
+    // Some match had a frontier witness before its pivot, so the exclusion
+    // that keeps each match once was exercised by the depth-first join.
+    assert!(exclusions > 0, "no frontier event was excluded before a pivot");
 }
 
 #[test]
