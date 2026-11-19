@@ -246,16 +246,13 @@ fn cases() -> Vec<(String, Closure, Vec<Event>)> {
 /// Following reported justifications from any event reaches only seeds:
 /// the graph event → witness of an optimal justification has no cycle.
 fn assert_well_founded(name: &str, closure: &Closure, costs: &ProofCosts) {
-    fn visit(
-        event: usize,
-        closure: &Closure,
-        costs: &ProofCosts,
-        state: &mut [u8],
-        name: &str,
-    ) {
+    fn visit(event: usize, closure: &Closure, costs: &ProofCosts, state: &mut [u8], name: &str) {
         match state[event] {
             2 => return,
-            1 => panic!("{name}: cyclic optimal proof through {:?}", closure.known[event]),
+            1 => panic!(
+                "{name}: cyclic optimal proof through {:?}",
+                closure.known[event]
+            ),
             _ => {}
         }
         state[event] = 1;
@@ -300,7 +297,10 @@ fn zero_weights_keep_costs_and_report_only_well_founded_proofs() {
         assert_well_founded(&name, &closure, &unit);
         assert_well_founded(&name, &closure, &kleene_stages(&closure, &seeds));
     }
-    assert!(dropped > 0, "no cyclic zero-cost justification was exercised");
+    assert!(
+        dropped > 0,
+        "no cyclic zero-cost justification was exercised"
+    );
 }
 
 #[test]
@@ -312,7 +312,10 @@ fn events_without_proof_and_foreign_seeds() {
     let closure = close(universe.clone(), &rules(&cycles), &mut Clock::default());
     let seeds = vec![universe[0].clone()];
     let sizes = minimum_proof_sizes(&closure, &seeds, |_| 1);
-    assert_eq!(sizes, reference(&closure, &seeds, |_, w| 1 + w.iter().sum::<u64>()));
+    assert_eq!(
+        sizes,
+        reference(&closure, &seeds, |_, w| 1 + w.iter().sum::<u64>())
+    );
     let unproved: Vec<usize> = (0..closure.known.len())
         .filter(|&i| sizes.costs[i].is_none())
         .collect();
@@ -326,7 +329,10 @@ fn events_without_proof_and_foreign_seeds() {
     assert!(!closure.known.contains(&outside));
     foreign.push(outside.clone());
     assert_eq!(minimum_proof_sizes(&closure, &foreign, |_| 1), sizes);
-    assert_eq!(kleene_stages(&closure, &foreign), kleene_stages(&closure, &seeds));
+    assert_eq!(
+        kleene_stages(&closure, &foreign),
+        kleene_stages(&closure, &seeds)
+    );
     assert_eq!(sizes.cost(&closure, &outside), None);
 }
 
