@@ -234,10 +234,27 @@ const SLOW: [&str; 6] = [
     "program_proof_scaling.res",
 ];
 
+/// Split in two by directory so each half stays well inside the runner's
+/// per-test timeout; together they cover every fixture under `examples/`.
 #[test]
-fn argument_index_equals_linear_scan_on_every_example_fixture() {
+fn argument_index_equals_linear_scan_on_experiment_fixtures() {
+    let (modules, compared) = sweep(|path| path.starts_with(examples().join("experiments")));
+    assert!(modules > 50 && compared > 100, "{modules} / {compared}");
+}
+#[test]
+fn argument_index_equals_linear_scan_on_other_example_fixtures() {
+    let (modules, compared) = sweep(|path| !path.starts_with(examples().join("experiments")));
+    assert!(modules > 30 && compared > 100, "{modules} / {compared}");
+}
+
+fn examples() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("examples")
+}
+
+fn sweep(select: impl Fn(&Path) -> bool) -> (usize, usize) {
     let mut paths = Vec::new();
-    fixtures(&Path::new(env!("CARGO_MANIFEST_DIR")).join("examples"), &mut paths);
+    fixtures(&examples(), &mut paths);
+    paths.retain(|path| select(path));
     let (mut modules, mut compared) = (0, 0);
     for path in &paths {
         // Workloads too slow for the runner's per-test timeout under the
@@ -270,5 +287,5 @@ fn argument_index_equals_linear_scan_on_every_example_fixture() {
         }
     }
     eprintln!("{modules} modules, {compared} evaluations compared");
-    assert!(modules > 50 && compared > 100, "{modules} / {compared}");
+    (modules, compared)
 }
