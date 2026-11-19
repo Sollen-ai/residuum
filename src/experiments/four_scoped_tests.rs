@@ -74,6 +74,16 @@ fn unbound_parameters_are_errors_naming_the_binding_that_fixes_them() {
         .unwrap_err()
         .to_string();
     assert!(error.contains("`program Service.person` is not"), "{error}");
+    // Bindings without a scope are rejected, not ignored, also from the API.
+    let mut e = experiment(&m, "contraposition").clone();
+    e.query_options.scope = None;
+    let error = GroundProgram::for_experiment(&m, &e)
+        .unwrap_err()
+        .to_string();
+    assert!(
+        error.contains("require an explicit search scope"),
+        "{error}"
+    );
     // Without a scope the rule keeps its parameters: the existing rejection.
     let mut e = experiment(&m, "contraposition").clone();
     e.query_options = Default::default();

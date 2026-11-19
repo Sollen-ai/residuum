@@ -87,6 +87,11 @@ impl GroundProgram {
             return Err(Error::new("fourFusion does not accept active mode"));
         }
         let Some(scope) = &options.scope else {
+            if !options.bindings.is_empty() {
+                return Err(Error::new(
+                    "explicit query bindings require an explicit search scope",
+                ));
+            }
             let rules: Vec<_> = module
                 .declarations
                 .iter()

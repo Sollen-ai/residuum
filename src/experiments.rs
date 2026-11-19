@@ -170,29 +170,22 @@ pub fn run_experiments(module: &Module) -> Result<Vec<ExperimentResult>, Error> 
             results.push(run_configured_query(module, experiment)?);
             continue;
         }
-        let (residual, four) = match experiment.query_kind {
-            ExperimentQueryKind::Residual => {
-                require_acyclic(&rules)?;
-                (
-                    Some(query_program_residual(
-                        module,
-                        &experiment.input,
-                        &experiment.goal,
-                        SearchLimits::default(),
-                    )?),
-                    None,
-                )
-            }
-            ExperimentQueryKind::FourFusion => unreachable!("handled by run_four_query"),
-        };
+        // Only legacy residual queries remain here.
+        require_acyclic(&rules)?;
+        let residual = query_program_residual(
+            module,
+            &experiment.input,
+            &experiment.goal,
+            SearchLimits::default(),
+        )?;
         let closure = close(experiment.input.clone(), &rules, &mut Clock::default());
         results.push(ExperimentResult {
             experiment: experiment.clone(),
             horn_goal: closure.known.contains(&experiment.goal),
             closure,
-            residual,
+            residual: Some(residual),
             active_residual: None,
-            four,
+            four: None,
         });
     }
     if results.is_empty() {

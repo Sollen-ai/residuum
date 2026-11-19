@@ -433,11 +433,10 @@ pub(crate) fn require_bound_parameters(
             .iter()
             .filter(|p| !bound.contains_key(&p.name))
         {
-            let Some(probe) = SubstitutionValue::Term(Term::Const("#probe".into()))
+            // `#` cannot start a source constant, so the probe never collides.
+            let probe = SubstitutionValue::Term(Term::Const("#probe".into()))
                 .canonical_for_type(&parameter.ty)
-            else {
-                continue;
-            };
+                .expect("a constant converts to every parameter type");
             let probe = Bindings::from([(parameter.name.clone(), probe)]);
             if substitute_rule_body(&rule.body, &probe) != rule.body {
                 return Err(Error::new(format!(
