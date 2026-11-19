@@ -116,19 +116,36 @@ experiment contraposition {
 
 La selección del ámbito y la validación de los bindings son las de las
 consultas residuales (`resolve_scoped_bindings`). Después, cada regla del
-ámbito se instancia con sus bindings (`GroundProgram::from_scope`). Un
-parámetro sin binding es un error que nombra el destino `with` que lo fijaría
-(`rule service.t`, `program Service.person`): no se buscan valores entre las
-constantes del módulo. No se aplica el preflight residual sobre el objetivo,
-porque un modelo FOUR restringe todas las instancias del ámbito y no solo las
-que producen el objetivo; la contraposición recorre las reglas hacia atrás.
+ámbito se instancia con sus bindings (`GroundProgram::for_experiment`, la única
+entrada para consultas con o sin opciones). Todo parámetro que aparece en el
+cuerpo de una regla del ámbito necesita un binding; si falta, la elaboración
+falla con un error que nombra el destino `with` que lo fijaría
+(`rule service.t`, `program Service.person`). Un parámetro compartido de un
+Program que una de sus reglas no menciona no necesita binding en ella. No se
+buscan valores entre las constantes del módulo. No se aplica el preflight
+residual sobre el objetivo, porque un modelo FOUR restringe todas las
+instancias del ámbito y no solo las que producen el objetivo; la
+contraposición recorre las reglas hacia atrás.
+
+Con ámbito, los bindings definen la teoría. Por eso la línea `Horn` y
+`Known after close` usan las mismas instancias que FOUR, y el informe muestra
+`search scope` y `query bindings`, como en las consultas residuales.
 
 El resultado se marca `explicit scope`. Cada regla restringe los modelos, de
-modo que una consecuencia en el ámbito también lo es del módulo completo
-(test `adding_rules_never_withdraws_an_entailment`). Un `false` solo dice que
-estas instancias no bastan: `otherInstance` instancia la regla para `bob` y no
-concluye nada sobre `alice`. `active` sigue sin admitirse con `fourFusion`, y
-`steps` recorre la enumeración de las mismas instancias.
+modo que una consecuencia en el ámbito también lo es del módulo completo: los
+modelos del módulo, restringidos a los átomos del ámbito, son modelos del
+ámbito. El test `adding_rules_never_withdraws_an_entailment` comprueba esa
+monotonía sobre conjuntos de reglas ground, que es lo que produce la
+instanciación. Un `false` solo dice que estas instancias no bastan:
+`otherInstance` instancia la regla para `bob` y no concluye nada sobre
+`alice`.
+
+Cada regla o RuleUse aporta una sola instancia: los bindings duplicados se
+rechazan, así que `service` para `alice` y para `bob` no caben en el mismo
+ámbito, y `rule r.x = c` fija el mismo valor en todos los usos de `r` dentro de
+un Program. `active` sigue sin admitirse con `fourFusion`. `steps` recorre la
+enumeración de las mismas instancias, hasta cuatro átomos, y termina con la
+misma línea `FOUR least model` que `query`.
 
 ## Alcance y ejecución segura
 

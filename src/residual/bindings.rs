@@ -6,7 +6,7 @@ use super::active::{certify, guarded_view};
 use super::query::{Bindings, constrained_goal, query_with_constraints, unify_term};
 use super::{Abducible, ActiveProgramResidualQuery, ProgramResidualQuery, SearchLimits};
 use crate::derive::DerivationClock;
-use crate::elab::{Error, is_assignable, rule_type_assignable};
+use crate::elab::{Error, is_assignable, rule_type_assignable, substitute_rule_body};
 use crate::programs::{
     compile_program, program_rule_origin, rule_use_substitution, shared_parameter,
 };
@@ -400,22 +400,52 @@ pub(crate) fn validate_query_options(
 
 /// Validates `using`/`with` for a fourFusion query: the same scope selection
 /// and binding checks as residual queries, without the residual goal
-/// preflight. A FOUR model constrains every instance in scope, not only those
-/// whose head matches the goal.
+/// preflight, since a FOUR model constrains every instance in scope, not only
+/// those whose head matches the goal. Instead every parameter that a scoped
+/// rule body mentions must be bound. Elaboration has already rejected active
+/// mode and bindings without a scope.
 pub(crate) fn validate_four_query_options(
     module: &Module,
     options: &mut QueryOptions,
 ) -> Result<(), Error> {
-    if options.active {
-        return Err(Error::new("fourFusion does not accept active mode"));
-    }
     if let Some(scope) = &options.scope {
-        let (_, _, bindings) = resolve_scoped_bindings(module, scope, &options.bindings)?;
+        let (rules, constraints, bindings) =
+            resolve_scoped_bindings(module, scope, &options.bindings)?;
+        require_bound_parameters(&rules, &constraints)?;
         options.bindings = bindings;
-    } else if !options.bindings.is_empty() {
-        return Err(Error::new(
-            "explicit query bindings require an explicit search scope",
-        ));
+    }
+    Ok(())
+}
+
+/// Every parameter that occurs in a rule body has a binding. A parameter
+/// occurs when substituting a probe value for it changes the body, so this
+/// uses the substitution itself rather than a second traversal. Shared
+/// Program parameters that one use never mentions need no binding there.
+pub(crate) fn require_bound_parameters(
+    rules: &[Rule],
+    constraints: &ConstraintMap,
+) -> Result<(), Error> {
+    let unbound = Bindings::new();
+    for rule in rules {
+        let bound = constraints.get(&rule.name).unwrap_or(&unbound);
+        for parameter in rule
+            .parameters
+            .iter()
+            .filter(|p| !bound.contains_key(&p.name))
+        {
+            let Some(probe) = SubstitutionValue::Term(Term::Const("#probe".into()))
+                .canonical_for_type(&parameter.ty)
+            else {
+                continue;
+            };
+            let probe = Bindings::from([(parameter.name.clone(), probe)]);
+            if substitute_rule_body(&rule.body, &probe) != rule.body {
+                return Err(Error::new(format!(
+                    "fourFusion needs every parameter in scope bound; `{}` is not",
+                    crate::programs::binding_target(&rule.name, &parameter.name)
+                )));
+            }
+        }
     }
     Ok(())
 }

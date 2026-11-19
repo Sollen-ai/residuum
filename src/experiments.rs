@@ -93,8 +93,15 @@ fn four_result(program: &GroundProgram, scoped: bool) -> Result<FourResult, Erro
     } else {
         None
     };
-    if let Some(enumeration) = &enumeration {
-        debug_assert_eq!(enumeration.entailed, least_model.entailed);
+    // The enumeration is the advertised reference check, so a disagreement is
+    // an error in every build, not only a debug assertion.
+    if enumeration
+        .as_ref()
+        .is_some_and(|e| e.entailed != least_model.entailed)
+    {
+        return Err(Error::new(
+            "FOUR least model and enumeration disagree; this is an evaluator bug",
+        ));
     }
     Ok(FourResult {
         least_model,
@@ -155,6 +162,10 @@ pub fn run_experiments(module: &Module) -> Result<Vec<ExperimentResult>, Error> 
         let Declaration::Experiment(experiment) = declaration else {
             continue;
         };
+        if experiment.query_kind == ExperimentQueryKind::FourFusion {
+            results.push(run_four_query(module, experiment)?);
+            continue;
+        }
         if !experiment.query_options.is_legacy() {
             results.push(run_configured_query(module, experiment)?);
             continue;
@@ -172,16 +183,7 @@ pub fn run_experiments(module: &Module) -> Result<Vec<ExperimentResult>, Error> 
                     None,
                 )
             }
-            ExperimentQueryKind::FourFusion => {
-                // Check the finite ground universe before calling close.
-                (
-                    None,
-                    Some(four_result(
-                        &GroundProgram::from_ground_rules(experiment, &rules)?,
-                        false,
-                    )?),
-                )
-            }
+            ExperimentQueryKind::FourFusion => unreachable!("handled by run_four_query"),
         };
         let closure = close(experiment.input.clone(), &rules, &mut Clock::default());
         results.push(ExperimentResult {
@@ -204,8 +206,8 @@ fn run_configured_query(
     module: &Module,
     experiment: &Experiment,
 ) -> Result<ExperimentResult, Error> {
-    if experiment.query_kind == ExperimentQueryKind::FourFusion {
-        return run_scoped_four_query(module, experiment);
+    if experiment.query_kind != ExperimentQueryKind::Residual {
+        return Err(Error::new("configured queries require residual mode"));
     }
     let options = &experiment.query_options;
     let (closure, residual, active_residual) = if options.active {
@@ -270,29 +272,28 @@ fn run_configured_query(
     })
 }
 
-/// fourFusion over an explicit scope: the same scope selection and binding
-/// checks as residual queries, then every rule in scope instantiated by its
-/// bindings. Unbound parameters are errors, never a search over constants.
-fn run_scoped_four_query(
-    module: &Module,
-    experiment: &Experiment,
-) -> Result<ExperimentResult, Error> {
-    let program = GroundProgram::from_scope(module, experiment)?;
-    let scope = experiment
-        .query_options
-        .scope
-        .as_ref()
-        .expect("from_scope checked the scope");
-    // Bindings constrain the query, not the theory used for observation.
-    let rules = crate::residual::scoped_rules(module, scope)?;
-    let closure = close(experiment.input.clone(), &rules, &mut Clock::default());
+/// Every fourFusion query, with or without `using`/`with`. Horn observes the
+/// same ground rules that FOUR evaluates: with a scope, the bindings define
+/// the theory, so closing over the uninstantiated rules would report a
+/// different one. Ground rules at one time cannot grow the closure, so no
+/// acyclicity check is needed before `close`.
+fn run_four_query(module: &Module, experiment: &Experiment) -> Result<ExperimentResult, Error> {
+    let program = GroundProgram::for_experiment(module, experiment)?;
+    let closure = close(
+        experiment.input.clone(),
+        program.rules(),
+        &mut Clock::default(),
+    );
     Ok(ExperimentResult {
         experiment: experiment.clone(),
         horn_goal: closure.known.contains(&experiment.goal),
         closure,
         residual: None,
         active_residual: None,
-        four: Some(four_result(&program, true)?),
+        four: Some(four_result(
+            &program,
+            experiment.query_options.scope.is_some(),
+        )?),
     })
 }
 
@@ -379,8 +380,7 @@ fn require_program_acyclic(module: &Module) -> Result<(), Error> {
     require_acyclic_with_edges(&dependencies, activation_edges)
 }
 
-/// The enumeration line when it ran, then the least model as the certificate:
-/// the goal's value in FOUR and the size of the compiled program.
+/// The enumeration line when it ran, then the least model as the certificate.
 fn render_four(four: &FourResult, goal: &Event) -> String {
     let mut output = String::new();
     if let Some(enumeration) = &four.enumeration {
@@ -389,7 +389,18 @@ fn render_four(four: &FourResult, goal: &Event) -> String {
             enumeration.entailed, enumeration.models, enumeration.interpretations
         ));
     }
-    let least = &four.least_model;
+    output.push_str(&render_four_least_model(
+        &four.least_model,
+        goal,
+        four.scoped,
+    ));
+    output.push('\n');
+    output
+}
+
+/// The certificate line: the answer, the goal's value in FOUR and the size of
+/// the compiled program. Shared with the stepwise CLI.
+pub fn render_four_least_model(least: &FourLeastModel, goal: &Event, scoped: bool) -> String {
     let value = match least
         .value_of(goal)
         .expect("the goal is an atom of its program")
@@ -399,14 +410,13 @@ fn render_four(four: &FourResult, goal: &Event) -> String {
         (true, true) => "B",
         (false, false) => "N",
     };
-    output.push_str(&format!(
-        "  FOUR least model: {} (goal {value}; {} atoms, {} clauses{})\n",
+    format!(
+        "  FOUR least model: {} (goal {value}; {} atoms, {} clauses{})",
         least.entailed,
         least.atoms.len(),
         least.clauses,
-        if four.scoped { "; explicit scope" } else { "" }
-    ));
-    output
+        if scoped { "; explicit scope" } else { "" }
+    )
 }
 
 pub(crate) fn horn(rule: &Rule) -> crate::typed::HornClause {
@@ -510,11 +520,9 @@ pub fn render_results(results: &[ExperimentResult]) -> String {
             result.horn_goal
         ));
         let options = &result.experiment.query_options;
-        if let Some(scope) = options
-            .scope
-            .as_ref()
-            .filter(|_| result.residual.is_some() || result.active_residual.is_some())
-        {
+        if let Some(scope) = options.scope.as_ref().filter(|_| {
+            result.residual.is_some() || result.active_residual.is_some() || result.four.is_some()
+        }) {
             let scope = match scope {
                 HornQueryScope::Rules(rules) => format!(
                     "rules {{{}}}",
@@ -529,7 +537,9 @@ pub fn render_results(results: &[ExperimentResult]) -> String {
             output.push_str(&format!("  search scope: {scope}\n"));
         }
         if !options.bindings.is_empty()
-            && (result.residual.is_some() || result.active_residual.is_some())
+            && (result.residual.is_some()
+                || result.active_residual.is_some()
+                || result.four.is_some())
         {
             let bindings = options
                 .bindings

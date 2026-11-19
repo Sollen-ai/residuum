@@ -324,7 +324,10 @@ Los [programas experimentales ejecutables](docs/executable-fixtures.md) llevan
 declaraciones, datos y consultas en el propio archivo Formal. La fixture
 [ResidualProof](examples/experiments/residual_proof.res) contiene los tres
 escenarios de seeds; [FourCounterexample](examples/experiments/four_counterexample.res)
-muestra `Horn: false` y `FOUR fusion: true` para `~P`. Se ejecutan individualmente
+muestra `Horn: false` y `FOUR fusion: true` para `~P`, junto con el modelo
+mínimo que decide la consulta (`FOUR least model`);
+[FourScopedBindings](examples/experiments/four_scoped_bindings.res) instancia
+reglas con parámetros mediante `using`/`with`. Se ejecutan individualmente
 con `python3 scripts/test_safe.py --fixture <archivo.res>`, bajo los mismos límites
 de compilación y ejecución. `close` permanece como consecuencia Horn explícita.
 

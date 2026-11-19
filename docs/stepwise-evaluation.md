@@ -104,8 +104,10 @@ Existing invocations retain legacy dispatch and output. New flags are:
 The CLI starts a fresh session per invocation. Status explicitly distinguishes
 complete evaluation from a step limit. Residual requirements and FOUR entailment
 are displayed only after completion. `query` retains the legacy rejection of
-unscoped queries in Program-bearing modules; explicit scoped residual and active
-residual source queries can opt into those modules. Defaults remain unsupported
+unscoped queries in Program-bearing modules; explicit scoped residual, active
+residual and fourFusion source queries can opt into those modules. FOUR steps
+enumerate at most four ground atoms and end with the same `FOUR least model`
+line as `query`. Defaults remain unsupported
 for residual queries. Active traces include original producers and guard metadata.
 Forward step sessions can observe bounded prefixes of cycles without computing
 an unbounded full closure. No flags execute State transformations.

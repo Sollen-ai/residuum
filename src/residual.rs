@@ -8,8 +8,8 @@ mod bindings;
 mod engine;
 mod query;
 pub(crate) use bindings::{
-    ConstraintMap, query_parameter_type, resolve_scoped_bindings, scoped_rules,
-    validate_four_query_options, validate_query_options,
+    ConstraintMap, query_parameter_type, require_bound_parameters, resolve_scoped_bindings,
+    scoped_rules, validate_four_query_options, validate_query_options,
 };
 pub use bindings::{
     HornQueryScope, QueryBinding, QueryParameterScope, QueryWithBindings,

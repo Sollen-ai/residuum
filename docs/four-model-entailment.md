@@ -235,3 +235,12 @@ Los cinco tests del experimento se ejecutan individualmente mediante
 `scripts/test_safe.py`, con 1 GiB total, swap deshabilitado y timeout. Cada test
 usa alrededor de 15 MiB RSS; las dos enumeraciones principales tardan menos de
 un segundo cada una. No se ejecuta la suite completa ni se amplía el lenguaje.
+
+## Evaluador ejecutable
+
+La consulta `fourFusion` de las fixtures usa esta misma semántica (fusión,
+filtro de I, reglas como desigualdades de verdad). La decide el modelo
+\(\le_k\)-mínimo y conserva la enumeración como comprobación hasta cuatro
+átomos; admite reglas con parámetros mediante `using`/`with`. Véanse
+[las fixtures ejecutables](executable-fixtures.md#four-con-ámbito-y-bindings-explícitos)
+y el [§12 de las optimizaciones](semi-naive-pending-optimizations.md).

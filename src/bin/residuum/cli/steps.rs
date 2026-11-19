@@ -1,7 +1,9 @@
 //! Bounded presentation adapters over the stepwise evaluator APIs.
 use super::*;
-use residuum::experiments::{DefaultSession, FourSession, GroundProgram};
-use residuum::typed::{ExperimentInputKind, ExperimentQueryKind, Rule};
+use residuum::experiments::{
+    DefaultSession, FourSession, GroundProgram, four_least_model, render_four_least_model,
+};
+use residuum::typed::{ExperimentInputKind, ExperimentQueryKind};
 use residuum::{ForwardSession, ResidualSession};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -138,14 +140,6 @@ fn render(
             "experimental runner requires a monotonic module without defaults",
         ));
     }
-    let rules: Vec<Rule> = module
-        .declarations
-        .iter()
-        .filter_map(|d| match d {
-            Declaration::Rule(r) => Some(r.clone()),
-            _ => None,
-        })
-        .collect();
     let experiments: Vec<_> = module
         .declarations
         .iter()
@@ -358,11 +352,8 @@ fn render(
                     }
                 }
                 ExperimentQueryKind::FourFusion => {
-                    let program = if experiment.query_options.scope.is_some() {
-                        GroundProgram::from_scope(module, experiment)?
-                    } else {
-                        GroundProgram::from_ground_rules(experiment, &rules)?
-                    };
+                    let program = GroundProgram::for_experiment(module, experiment)?;
+                    let least = four_least_model(&program);
                     let mut session = FourSession::from_program(program)?;
                     for _ in 0..options.max_steps {
                         let step = session.step();
@@ -388,6 +379,16 @@ fn render(
                             final_output,
                             "  FOUR fusion: {} ({} models / {} interpretations)",
                             result.entailed, result.models, result.interpretations
+                        )
+                        .unwrap();
+                        writeln!(
+                            final_output,
+                            "{}",
+                            render_four_least_model(
+                                &least,
+                                &experiment.goal,
+                                experiment.query_options.scope.is_some()
+                            )
                         )
                         .unwrap();
                     }
@@ -621,6 +622,14 @@ mod tests {
             2
         );
         assert!(scoped.contains("FOUR fusion: false (72 models / 256 interpretations)"));
+        // The deciding line matches plain `query`.
+        assert_eq!(
+            scoped
+                .matches("FOUR least model: true (goal T; 2 atoms, 3 clauses; explicit scope)\n")
+                .count(),
+            2
+        );
+        assert!(full.contains("FOUR least model: true (goal T; 2 atoms, 3 clauses)\n"));
     }
     #[test]
     fn default_trace_selects_once_and_existing_invocations_keep_their_output() {

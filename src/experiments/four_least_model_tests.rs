@@ -42,7 +42,6 @@ fn least_model_matches_enumeration_on_every_four_fixture() {
     let mut rejected = std::collections::BTreeMap::<String, usize>::new();
     for path in FIXTURES {
         let module = crate::load_formal_module(path).unwrap();
-        let rules = rules_of(&module);
         for declaration in &module.declarations {
             let Declaration::Experiment(experiment) = declaration else {
                 continue;
@@ -50,11 +49,7 @@ fn least_model_matches_enumeration_on_every_four_fixture() {
             if experiment.query_kind != ExperimentQueryKind::FourFusion {
                 continue;
             }
-            let program = if experiment.query_options.is_legacy() {
-                GroundProgram::from_ground_rules(experiment, &rules)
-            } else {
-                GroundProgram::from_scope(&module, experiment)
-            };
+            let program = GroundProgram::for_experiment(&module, experiment);
             let program = match program {
                 Ok(program) => program,
                 Err(error) => {

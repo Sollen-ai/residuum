@@ -4,7 +4,9 @@
 //! augments the Horn closure.
 
 use super::{Error, FourEntailment, horn};
-use crate::typed::{Antecedent, Event, Experiment, HornClause, Module, Polarity, Rule, Term};
+use crate::typed::{
+    Antecedent, Declaration, Event, Experiment, HornClause, Module, Polarity, Rule, Term,
+};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Copy)]
@@ -68,11 +70,38 @@ fn evaluate(antecedent: &Antecedent, world: &BTreeMap<Event, Value>) -> Value {
 #[derive(Debug, Clone)]
 pub struct GroundProgram {
     facts: Vec<Event>,
+    /// The ground rules the clauses come from, for the Horn observation.
+    rules: Vec<Rule>,
     clauses: Vec<(String, HornClause)>,
     goal: Event,
     atoms: Vec<Event>,
 }
 impl GroundProgram {
+    /// The ground program of a fourFusion experiment: every rule of the module
+    /// without query options, or the rules of its explicit `using` scope
+    /// instantiated by its `with` bindings, through the same scope selection
+    /// and binding checks as residual queries.
+    pub fn for_experiment(module: &Module, experiment: &Experiment) -> Result<Self, Error> {
+        let options = &experiment.query_options;
+        if options.active {
+            return Err(Error::new("fourFusion does not accept active mode"));
+        }
+        let Some(scope) = &options.scope else {
+            let rules: Vec<_> = module
+                .declarations
+                .iter()
+                .filter_map(|d| match d {
+                    Declaration::Rule(rule) => Some(rule.clone()),
+                    _ => None,
+                })
+                .collect();
+            return Self::from_ground_rules(experiment, &rules);
+        };
+        let (rules, constraints, _) =
+            crate::residual::resolve_scoped_bindings(module, scope, &options.bindings)?;
+        Self::instantiate(experiment, &rules, &constraints)
+    }
+
     /// The premises and goal of `experiment` with rules that have no parameters.
     pub fn from_ground_rules(experiment: &Experiment, rules: &[Rule]) -> Result<Self, Error> {
         if rules.iter().any(|rule| !rule.parameters.is_empty()) {
@@ -80,68 +109,43 @@ impl GroundProgram {
                 "fourFusion requires ground rules; bind their parameters with an explicit `using` scope and `with` bindings",
             ));
         }
-        Self::new(
-            &experiment.input,
-            &experiment.goal,
-            rules
-                .iter()
-                .map(|rule| (rule.name.clone(), horn(rule)))
-                .collect(),
-        )
+        Self::new(&experiment.input, &experiment.goal, rules.to_vec())
     }
 
-    /// The premises and goal of `experiment` with every rule of its explicit
-    /// `using` scope instantiated by its `with` bindings, through the same
-    /// scope selection and binding checks as residual queries.
-    pub fn from_scope(module: &Module, experiment: &Experiment) -> Result<Self, Error> {
-        let options = &experiment.query_options;
-        if options.active {
-            return Err(Error::new("fourFusion does not accept active mode"));
-        }
-        let scope = options.scope.as_ref().ok_or_else(|| {
-            Error::new("explicit query bindings require an explicit search scope")
-        })?;
-        let (rules, constraints, _) =
-            crate::residual::resolve_scoped_bindings(module, scope, &options.bindings)?;
-        Self::instantiate(experiment, &rules, &constraints)
-    }
-
-    /// A parameter without a binding is an error naming the `with` target
-    /// that would fix it: there is no search over the constants of the module.
+    /// A parameter that a body mentions without a binding is an error naming
+    /// the `with` target that would fix it: there is no search over the
+    /// constants of the module.
     fn instantiate(
         experiment: &Experiment,
         rules: &[Rule],
         constraints: &crate::residual::ConstraintMap,
     ) -> Result<Self, Error> {
+        crate::residual::require_bound_parameters(rules, constraints)?;
         let unbound = BTreeMap::new();
-        let mut clauses = Vec::new();
-        for rule in rules {
-            let bound = constraints.get(&rule.name).unwrap_or(&unbound);
-            if let Some(parameter) = rule
-                .parameters
-                .iter()
-                .find(|p| !bound.contains_key(&p.name))
-            {
-                return Err(Error::new(format!(
-                    "fourFusion needs every parameter in scope bound; `{}` is not",
-                    crate::programs::binding_target(&rule.name, &parameter.name)
-                )));
-            }
-            let instance = Rule {
+        let instances = rules
+            .iter()
+            .map(|rule| Rule {
                 name: rule.name.clone(),
                 parameters: Vec::new(),
-                body: crate::elab::substitute_rule_body(&rule.body, bound),
-            };
-            clauses.push((rule.name.clone(), horn(&instance)));
-        }
-        Self::new(&experiment.input, &experiment.goal, clauses)
+                body: crate::elab::substitute_rule_body(
+                    &rule.body,
+                    constraints.get(&rule.name).unwrap_or(&unbound),
+                ),
+            })
+            .collect();
+        Self::new(&experiment.input, &experiment.goal, instances)
     }
 
-    fn new(
-        facts: &[Event],
-        goal: &Event,
-        clauses: Vec<(String, HornClause)>,
-    ) -> Result<Self, Error> {
+    /// The ground rules of the program, the theory its Horn closure observes.
+    pub fn rules(&self) -> &[Rule] {
+        &self.rules
+    }
+
+    fn new(facts: &[Event], goal: &Event, rules: Vec<Rule>) -> Result<Self, Error> {
+        let clauses: Vec<_> = rules
+            .iter()
+            .map(|rule| (rule.name.clone(), horn(rule)))
+            .collect();
         let mut atoms: BTreeSet<Event> = facts.iter().chain([goal]).map(key).collect();
         for (_, clause) in &clauses {
             collect(&clause.antecedent, &mut atoms);
@@ -159,6 +163,7 @@ impl GroundProgram {
         }
         Ok(Self {
             facts: facts.to_vec(),
+            rules,
             clauses,
             goal: goal.clone(),
             atoms: atoms.into_iter().collect(),

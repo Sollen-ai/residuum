@@ -498,7 +498,8 @@ evaluadores, `FourSession` y el oráculo de tests reciben un `GroundProgram`,
 que concentra las comprobaciones de groundness. Las reglas con parámetros se
 instancian solo mediante `using`/`with`, con la resolución de bindings de las
 consultas residuales; no hay grounding automático sobre las constantes del
-módulo. Véase [FOUR con ámbito](executable-fixtures.md#four-con-ámbito-y-bindings-explícitos).
+módulo. Con ámbito, Horn observa las mismas instancias que FOUR. Un desacuerdo
+entre el modelo mínimo y la enumeración es un error en toda compilación. Véase [FOUR con ámbito](executable-fixtures.md#four-con-ámbito-y-bindings-explícitos).
 Las 30 consultas de fixtures con reglas parametrizadas siguen rechazadas con
 un mensaje que remite a `using`/`with`; no se les añadieron bindings.
 

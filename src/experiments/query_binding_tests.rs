@@ -292,7 +292,13 @@ fn source_bindings_reject_bad_scopes_values_duplicates_and_conflicts() {
     );
     // fourFusion shares the scope and binding checks, not the residual goal
     // preflight (src/experiments/four_scoped_tests.rs).
-    four("fourFusion target(item) @ after tau using rules { r }").unwrap();
+    // Every parameter a scoped body mentions must be bound, at elaboration.
+    assert!(
+        four("fourFusion target(item) @ after tau using rules { r }")
+            .unwrap_err()
+            .to_string()
+            .contains("`rule r.")
+    );
     assert!(
         four("fourFusion target(item) @ after tau using rules { r } with { rule s.x = item }")
             .unwrap_err()
