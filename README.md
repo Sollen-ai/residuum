@@ -15,6 +15,15 @@ La [referencia del lenguaje](docs/language-reference.md) enumera cada
 construcción de los ficheros `.res` con un ejemplo, su significado y la orden
 que la evalúa; un test comprueba que todos sus ejemplos se elaboran.
 
+### Libro
+
+*El lenguaje de programación Residuum* describe este lenguaje en el commit
+`d4d2282`. [Descargar el PDF](https://github.com/Sollen-ai/residuum-book/releases/latest/download/residuum.pdf)
+· [Todas las ediciones](https://github.com/Sollen-ai/residuum-book/releases)
+· [Fuentes del libro](https://github.com/Sollen-ai/residuum-book).
+Los commits posteriores pueden diferir de lo que dice el libro; cada edición
+indica su commit en la portada y en el colofón.
+
 La [primera teoría experimental de la geometría inferencial](docs/inferential-geometry-experimental-theory.md)
 reúne los estudios de clausura jurídica, bases extremas, fronteras mínimas e
 identificabilidad mediante particiones. Distingue teoremas condicionados,
